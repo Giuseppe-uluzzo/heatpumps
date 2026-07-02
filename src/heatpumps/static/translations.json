@@ -1107,7 +1107,7 @@
         "GER":"Heatpumps Modell als JSON Herunterladen"
     },
     "export_tespy":{
-        "ENG":"Download TesPy model as JSON",
-        "GER":"TesPy Modell als JSON Herunterladen"
+        "ENG":"Download TESPy model as JSON",
+        "GER":"TESPy Modell als JSON Herunterladen"
     }
 }
