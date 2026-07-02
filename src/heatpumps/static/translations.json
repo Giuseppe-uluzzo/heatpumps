@@ -1101,5 +1101,13 @@
     "fallback_lang": {
         "ENG": "For this key no translation was found for 'English' language.",
         "GER": "Für diesen Key wurde keine Übersetzung auf 'Deutsch' gefunden."
+    },
+    "export_hp":{
+        "ENG":"Download heatpumps model as JSON",
+        "GER":"Heatpumps Modell als JSON Herunterladen"
+    },
+    "export_tespy":{
+        "ENG":"Download TesPy model as JSON",
+        "GER":"TesPy Modell als JSON Herunterladen"
     }
 }
