@@ -839,28 +839,11 @@ if mode == txt('mode_option_design'):
             try:
                 ss.hp = run_design(hp_model_name, params)
                 sim_succeded = True
-                st.success(
-                    'Die Simulation der Wärmepumpenauslegung war erfolgreich.'
-                    )
+                st.success(txt('design_sim_success'))
             except Exception as e:
                 sim_succeded = False
-                print(f'{type(e).__name__}: {e}')
-                st.error(
-                    'Bei der Simulation der Wärmepumpe ist der nachfolgende '
-                    + 'Fehler aufgetreten. Bitte korrigieren Sie die '
-                    + f'Eingangsparameter und versuchen es erneut.\n\n"{e}"'
-                    )
-                debug_json = json.dumps(
-                    {'model_key': hp_model_name, 'params': params}, indent=2
-                )
-                st.download_button(
-                    label='Download Debug-Eingabedatei (JSON)',
-                    data=debug_json,
-                    file_name=f"{params['setup']['type']}_debug.json",
-                    mime='application/json'
-                )
-                with st.expander('Eingabeparameter (kopierbar)'):
-                    st.code(debug_json, language='json')
+
+                st.error(txt('design_sim_error') + f'\n\n"{e}"')
 
         # %% MARK: Results
         if sim_succeded:
