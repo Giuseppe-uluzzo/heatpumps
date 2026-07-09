@@ -208,23 +208,23 @@ def get_params(heat_pump_model, econ_type=None):
 
 
 def from_json(filepath):
-    """Instantiate and run a heat pump model from a debug JSON file.
+    """Instantiate a heat pump model class from a JSON save file.
 
     Parameters
     ----------
     filepath : str or path-like
-        Path to a JSON file in the format produced by the dashboard on a
-        failed design simulation: ``{"model_key": "<key>", "params": {...}}``.
+        Path to a JSON save file in the format produced by the dashboard
+        after a design simulation: ``{"model_key": "<key>", "params": {...}}``.
 
     Returns
     -------
-    HeatPumpBase subclass instance
-        The fully constructed (but not yet simulated) heat pump object.
+    heat pump model calss instance
+        The fully constructed (but not yet simulated) heat pump instance.
 
     Example
     -------
     >>> from heatpumps.parameters import from_json
-    >>> hp = from_json("HeatPumpSimple_debug.json")
+    >>> hp = from_json("HeatPumpSimple.json")
     >>> hp.run_model()
     """
     with open(filepath, encoding='utf-8') as f:
@@ -240,6 +240,8 @@ def from_json(filepath):
         )
 
     cls, econ_type = _model_registry[model_key]
+
     if econ_type is not None:
         return cls(params, econ_type=econ_type)
+
     return cls(params)
