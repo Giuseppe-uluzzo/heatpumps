@@ -447,6 +447,22 @@
         "ENG": "To calculate the part-load, click 'Run part-load simulation'.",
         "GER": "Um die Teillast zu berechnen, drücke auf 'Teillast simulieren'."
     },
+    "design_btn_export":{
+        "ENG":"💾 Save model",
+        "GER":"💾 Modell speichern"
+    },
+    "export_modal_header":{
+        "ENG":"💾 Save model",
+        "GER":"💾 Modell speichern"
+    },
+    "exp_mod_btn_heatpumps":{
+        "ENG":"Download heatpumps model as JSON",
+        "GER":"Heatpumps Modell als JSON Herunterladen"
+    },
+    "exp_mod_btn_tespy":{
+        "ENG":"Download TESPy model as JSON",
+        "GER":"TESPy Modell als JSON Herunterladen"
+    },
     "od_header": {
         "ENG": "Operating characteristics",
         "GER": "Betriebscharakteristik"
@@ -1101,13 +1117,5 @@
     "fallback_lang": {
         "ENG": "For this key no translation was found for 'English' language.",
         "GER": "Für diesen Key wurde keine Übersetzung auf 'Deutsch' gefunden."
-    },
-    "export_hp":{
-        "ENG":"Download heatpumps model as JSON",
-        "GER":"Heatpumps Modell als JSON Herunterladen"
-    },
-    "export_tespy":{
-        "ENG":"Download TESPy model as JSON",
-        "GER":"TESPy Modell als JSON Herunterladen"
     }
 }

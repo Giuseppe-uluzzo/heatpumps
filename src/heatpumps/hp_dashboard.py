@@ -167,6 +167,28 @@ def build_label_map(labels):
     """Build a dict mapping English component labels to translated labels."""
     return {lbl: translate_comp_label(lbl) for lbl in labels}
 
+
+@st.dialog(txt('export_modal_header'))
+def export_modal():
+    debug_json = json.dumps(
+        {'model_key': hp_model_name, 'params': params}, indent=4
+    )
+
+    st.download_button(
+        label=txt('exp_mod_btn_heatpumps'),
+        data=debug_json,
+        file_name=f"{params['setup']['type']}_heatpumps.json",
+        mime='application/json'
+    )
+
+    st.download_button(
+        label=txt('exp_mod_btn_tespy'),
+        data=json.dumps(ss.hp.nw.export(), indent=4),
+        file_name=f"{params['setup']['type']}_tespy.json",
+        mime='application/json'
+    )
+
+
 src_path = str(resources.files('heatpumps').joinpath('static'))
 icon_path = os.path.join(src_path, 'img', 'icons')
 
@@ -1253,32 +1275,24 @@ if mode == txt('mode_option_design'):
 
                     st.write(txt('design_exergy_info'))
 
-                st.divider() 
-
-                debug_json = json.dumps(
-                    {'model_key': hp_model_name, 'params': params}, indent=2
-                )
-                col1, col2 = st.columns([1,1])
-                with col1:
-                    st.download_button(
-                        label=txt('export_hp'),
-                        data=debug_json,
-                        file_name=f"{params['setup']['type']}_heatpumps.json",
-                        mime='application/json'
-                    )
-                with col2:
-                    st.download_button(
-                        label=txt('export_tespy'),
-                        data=json.dumps(ss.hp.nw.export(), indent=2),
-                        file_name=f"{params['setup']['type']}_tespy.json",
-                        mime='application/json'
-                    )
-                
-                st.divider() 
+                st.divider()
 
                 st.info(txt('design_to_od_info'))
 
-                st.button(txt('sb_btn_run_offdesign'), on_click=switch2partload)
+                col_btn_pl, col_btn_save = st.columns(2)
+
+                col_btn_pl.button(
+                    txt('sb_btn_run_offdesign'),
+                    on_click=switch2partload,
+                    width='stretch'
+                )
+
+                btn_export = col_btn_save.button(
+                    txt('design_btn_export'),
+                    width='stretch'
+                )
+                if btn_export:
+                    export_modal()
 
 if mode == txt('mode_option_partload'):
     # %% MARK: Offdesign Simulation
