@@ -1270,6 +1270,29 @@ if mode == txt('mode_option_design'):
 
                     st.write(txt('design_exergy_info'))
 
+                st.divider() 
+
+                debug_json = json.dumps(
+                    {'model_key': hp_model_name, 'params': params}, indent=2
+                )
+                col1, col2 = st.columns([1,1])
+                with col1:
+                    st.download_button(
+                        label=txt('export_hp'),
+                        data=debug_json,
+                        file_name=f"{params['setup']['type']}_heatpumps.json",
+                        mime='application/json'
+                    )
+                with col2:
+                    st.download_button(
+                        label=txt('export_tespy'),
+                        data=json.dumps(ss.hp.nw.export(), indent=2),
+                        file_name=f"{params['setup']['type']}_tespy.json",
+                        mime='application/json'
+                    )
+                
+                st.divider() 
+
                 st.info(txt('design_to_od_info'))
 
                 st.button(txt('sb_btn_run_offdesign'), on_click=switch2partload)
