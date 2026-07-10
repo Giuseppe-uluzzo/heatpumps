@@ -173,7 +173,7 @@ def build_label_map(labels):
 
 
 @st.dialog(txt('export_modal_header'))
-def export_modal():
+def export_modal(hp_model_name, params):
     debug_json = json.dumps(
         {'model_key': hp_model_name, 'params': params}, indent=4
     )
@@ -191,6 +191,15 @@ def export_modal():
         file_name=f"{params['setup']['type']}_tespy.json",
         mime='application/json'
     )
+
+
+@st.fragment
+def export_fragment(hp_model_name, params):
+    """Isolate the export button in a fragment so opening the modal (and the
+    download buttons inside it) reruns only this fragment instead of the whole
+    results section."""
+    if st.button(txt('design_btn_export'), width='stretch'):
+        export_modal(hp_model_name, params)
 
 
 src_path = str(resources.files('heatpumps').joinpath('static'))
@@ -1291,12 +1300,8 @@ if mode == txt('mode_option_design'):
                 width='stretch'
             )
 
-            btn_export = col_btn_save.button(
-                txt('design_btn_export'),
-                width='stretch'
-            )
-            if btn_export:
-                export_modal()
+            with col_btn_save:
+                export_fragment(hp_model_name, params)
 
 if mode == txt('mode_option_partload'):
     # %% MARK: Offdesign Simulation
