@@ -15,6 +15,33 @@ from simulation import run_design, run_partload
 from streamlit import session_state as ss
 
 
+@st.cache_data
+def load_translations():
+    resourcepath = resources.files('heatpumps')
+    tlpath = os.path.join(
+        resourcepath, 'static', 'translations.json'
+    )
+    with open(tlpath, 'r', encoding='utf-8') as file:
+        ss.tl = json.load(file)
+
+load_translations()
+
+if 'lg' not in ss:
+    ss.lg = 'ENG'
+
+def txt(label_key):
+    """Convenience function to get text from translations."""
+    label_translations = ss.tl.get(label_key, None)
+    if label_translations is None:
+        return ss.tl['fallback_key'][ss.lg]
+
+    translated_label = label_translations.get(ss.lg, None)
+    if label_translations is None:
+        return ss.tl['fallback_lang'][ss.lg]
+
+    return translated_label
+
+
 def switch2design():
     """Switch to design simulation tab."""
     ss.select = txt('mode_option_design')
@@ -105,29 +132,6 @@ def img_to_base64(image_path):
     return base64.b64encode(data).decode()
 
 
-# @st.cache_data    # Uncomment this when translation process is done
-def load_translations():
-    resourcepath = resources.files('heatpumps')
-    tlpath = os.path.join(
-        resourcepath, 'static', 'translations.json'
-    )
-    with open(tlpath, 'r', encoding='utf-8') as file:
-        ss.tl = json.load(file)
-
-
-def txt(label_key):
-    """Convenience function to get text from translations."""
-    label_translations = ss.tl.get(label_key, None)
-    if label_translations is None:
-        return ss.tl['fallback_key'][ss.lg]
-
-    translated_label = label_translations.get(ss.lg, None)
-    if label_translations is None:
-        return ss.tl['fallback_lang'][ss.lg]
-
-    return translated_label
-
-
 def translate_comp_label(label):
     """Translate an English component label to the current dashboard language.
 
@@ -196,8 +200,6 @@ icon_path = os.path.join(src_path, 'img', 'icons')
 refrigpath = str(resources.files('heatpumps').joinpath('static', 'refrigerants.json'))
 with open(refrigpath, 'r', encoding='utf-8') as file:
     refrigerants = json.load(file)
-
-load_translations()
 
 st.set_page_config(
     layout='wide',
