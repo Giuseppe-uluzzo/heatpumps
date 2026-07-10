@@ -24,156 +24,300 @@ from heatpumps.models import (
     HeatPumpCascadeIHXPCIHX, HeatPumpCascadeIHXPCIHXTrans,
 )
 
-# Maps model_key → (class, econ_type or None)
+# Single source of truth: maps model_key → {'cls': class, 'econ_type': str or None}.
+# ``get_params`` reverse-looks-up this table (class name + econ_type → key) and
+# ``from_json`` looks it up directly.
 _model_registry = {
-    'simple':                           (HeatPumpSimple,            None),
-    'simple_trans':                     (HeatPumpSimpleTrans,        None),
-    'ihx':                              (HeatPumpIHX,               None),
-    'ihx_trans':                        (HeatPumpIHXTrans,           None),
-    'ic':                               (HeatPumpIC,                None),
-    'ic_trans':                         (HeatPumpICTrans,            None),
-    'econ_closed':                      (HeatPumpEcon,              'closed'),
-    'econ_closed_trans':                (HeatPumpEconTrans,          'closed'),
-    'econ_closed_ihx':                  (HeatPumpEconIHX,           'closed'),
-    'econ_closed_ihx_trans':            (HeatPumpEconIHXTrans,       'closed'),
-    'econ_open':                        (HeatPumpEcon,              'open'),
-    'econ_open_trans':                  (HeatPumpEconTrans,          'open'),
-    'econ_open_ihx':                    (HeatPumpEconIHX,           'open'),
-    'econ_open_ihx_trans':              (HeatPumpEconIHXTrans,       'open'),
-    'ihx_econ_closed':                  (HeatPumpIHXEcon,           'closed'),
-    'ihx_econ_closed_trans':            (HeatPumpIHXEconTrans,       'closed'),
-    'ihx_econ_open':                    (HeatPumpIHXEcon,           'open'),
-    'ihx_econ_open_trans':              (HeatPumpIHXEconTrans,       'open'),
-    'pc_econ_closed':                   (HeatPumpPC,                'closed'),
-    'pc_econ_closed_trans':             (HeatPumpPCTrans,            'closed'),
-    'pc_econ_closed_ihx':               (HeatPumpPCIHX,             'closed'),
-    'pc_econ_closed_ihx_trans':         (HeatPumpPCIHXTrans,         'closed'),
-    'pc_econ_open':                     (HeatPumpPC,                'open'),
-    'pc_econ_open_trans':               (HeatPumpPCTrans,            'open'),
-    'pc_econ_open_ihx':                 (HeatPumpPCIHX,             'open'),
-    'pc_econ_open_ihx_trans':           (HeatPumpPCIHXTrans,         'open'),
-    'ihx_pc_econ_closed':               (HeatPumpIHXPC,             'closed'),
-    'ihx_pc_econ_closed_trans':         (HeatPumpIHXPCTrans,         'closed'),
-    'ihx_pc_econ_closed_ihx':           (HeatPumpIHXPCIHX,          'closed'),
-    'ihx_pc_econ_closed_ihx_trans':     (HeatPumpIHXPCIHXTrans,      'closed'),
-    'ihx_pc_econ_open':                 (HeatPumpIHXPC,             'open'),
-    'ihx_pc_econ_open_trans':           (HeatPumpIHXPCTrans,         'open'),
-    'ihx_pc_econ_open_ihx':             (HeatPumpIHXPCIHX,          'open'),
-    'ihx_pc_econ_open_ihx_trans':       (HeatPumpIHXPCIHXTrans,      'open'),
-    'flash':                            (HeatPumpFlash,             None),
-    'flash_trans':                      (HeatPumpFlashTrans,         None),
-    'cascade':                          (HeatPumpCascade,           None),
-    'cascade_trans':                    (HeatPumpCascadeTrans,       None),
-    'cascade_2ihx':                     (HeatPumpCascade2IHX,       None),
-    'cascade_2ihx_trans':               (HeatPumpCascade2IHXTrans,  None),
-    'cascade_ic':                       (HeatPumpCascadeIC,         None),
-    'cascade_ic_trans':                 (HeatPumpCascadeICTrans,     None),
-    'cascade_flash':                    (HeatPumpCascadeFlash,      None),
-    'cascade_flash_trans':              (HeatPumpCascadeFlashTrans,  None),
-    'cascade_econ_closed':              (HeatPumpCascadeEcon,       'closed'),
-    'cascade_econ_closed_trans':        (HeatPumpCascadeEconTrans,   'closed'),
-    'cascade_econ_closed_ihx':          (HeatPumpCascadeEconIHX,    'closed'),
-    'cascade_econ_closed_ihx_trans':    (HeatPumpCascadeEconIHXTrans,'closed'),
-    'cascade_econ_open':                (HeatPumpCascadeEcon,       'open'),
-    'cascade_econ_open_trans':          (HeatPumpCascadeEconTrans,   'open'),
-    'cascade_econ_open_ihx':            (HeatPumpCascadeEconIHX,    'open'),
-    'cascade_econ_open_ihx_trans':      (HeatPumpCascadeEconIHXTrans,'open'),
-    'cascade_ihx_econ_closed':          (HeatPumpCascadeIHXEcon,    'closed'),
-    'cascade_ihx_econ_closed_trans':    (HeatPumpCascadeIHXEconTrans,'closed'),
-    'cascade_ihx_econ_open':            (HeatPumpCascadeIHXEcon,    'open'),
-    'cascade_ihx_econ_open_trans':      (HeatPumpCascadeIHXEconTrans,'open'),
-    'cascade_pc_econ_closed':           (HeatPumpCascadePC,         'closed'),
-    'cascade_pc_econ_closed_trans':     (HeatPumpCascadePCTrans,     'closed'),
-    'cascade_pc_econ_closed_ihx':       (HeatPumpCascadePCIHX,      'closed'),
-    'cascade_pc_econ_closed_ihx_trans': (HeatPumpCascadePCIHXTrans,  'closed'),
-    'cascade_pc_econ_open':             (HeatPumpCascadePC,         'open'),
-    'cascade_pc_econ_open_trans':       (HeatPumpCascadePCTrans,     'open'),
-    'cascade_pc_econ_open_ihx':         (HeatPumpCascadePCIHX,      'open'),
-    'cascade_pc_econ_open_ihx_trans':   (HeatPumpCascadePCIHXTrans,  'open'),
-    'cascade_ihx_pc_econ_closed':       (HeatPumpCascadeIHXPC,      'closed'),
-    'cascade_ihx_pc_econ_closed_trans': (HeatPumpCascadeIHXPCTrans,  'closed'),
-    'cascade_ihx_pc_econ_closed_ihx':   (HeatPumpCascadeIHXPCIHX,   'closed'),
-    'cascade_ihx_pc_econ_closed_ihx_trans': (HeatPumpCascadeIHXPCIHXTrans, 'closed'),
-    'cascade_ihx_pc_econ_open':         (HeatPumpCascadeIHXPC,      'open'),
-    'cascade_ihx_pc_econ_open_trans':   (HeatPumpCascadeIHXPCTrans,  'open'),
-    'cascade_ihx_pc_econ_open_ihx':     (HeatPumpCascadeIHXPCIHX,   'open'),
-    'cascade_ihx_pc_econ_open_ihx_trans': (HeatPumpCascadeIHXPCIHXTrans, 'open'),
+    'simple': {
+        'cls': HeatPumpSimple,
+        'econ_type': None
+    },
+    'simple_trans': {
+        'cls': HeatPumpSimpleTrans,
+        'econ_type': None
+    },
+    'ihx': {
+        'cls': HeatPumpIHX,
+        'econ_type': None
+    },
+    'ihx_trans': {
+        'cls': HeatPumpIHXTrans,
+        'econ_type': None
+    },
+    'ic': {
+        'cls': HeatPumpIC,
+        'econ_type': None
+    },
+    'ic_trans': {
+        'cls': HeatPumpICTrans,
+        'econ_type': None
+    },
+    'econ_closed': {
+        'cls': HeatPumpEcon,
+        'econ_type': 'closed'
+    },
+    'econ_closed_trans': {
+        'cls': HeatPumpEconTrans,
+        'econ_type': 'closed'
+    },
+    'econ_closed_ihx': {
+        'cls': HeatPumpEconIHX,
+        'econ_type': 'closed'
+    },
+    'econ_closed_ihx_trans': {
+        'cls': HeatPumpEconIHXTrans,
+        'econ_type': 'closed'
+    },
+    'econ_open': {
+        'cls': HeatPumpEcon,
+        'econ_type': 'open'
+    },
+    'econ_open_trans': {
+        'cls': HeatPumpEconTrans,
+        'econ_type': 'open'
+    },
+    'econ_open_ihx': {
+        'cls': HeatPumpEconIHX,
+        'econ_type': 'open'
+    },
+    'econ_open_ihx_trans': {
+        'cls': HeatPumpEconIHXTrans,
+        'econ_type': 'open'
+    },
+    'ihx_econ_closed': {
+        'cls': HeatPumpIHXEcon,
+        'econ_type': 'closed'
+    },
+    'ihx_econ_closed_trans': {
+        'cls': HeatPumpIHXEconTrans,
+        'econ_type': 'closed'
+    },
+    'ihx_econ_open': {
+        'cls': HeatPumpIHXEcon,
+        'econ_type': 'open'
+    },
+    'ihx_econ_open_trans': {
+        'cls': HeatPumpIHXEconTrans,
+        'econ_type': 'open'
+    },
+    'pc_econ_closed': {
+        'cls': HeatPumpPC,
+        'econ_type': 'closed'
+    },
+    'pc_econ_closed_trans': {
+        'cls': HeatPumpPCTrans,
+        'econ_type': 'closed'
+    },
+    'pc_econ_closed_ihx': {
+        'cls': HeatPumpPCIHX,
+        'econ_type': 'closed'
+    },
+    'pc_econ_closed_ihx_trans': {
+        'cls': HeatPumpPCIHXTrans,
+        'econ_type': 'closed'
+    },
+    'pc_econ_open': {
+        'cls': HeatPumpPC,
+        'econ_type': 'open'
+    },
+    'pc_econ_open_trans': {
+        'cls': HeatPumpPCTrans,
+        'econ_type': 'open'
+    },
+    'pc_econ_open_ihx': {
+        'cls': HeatPumpPCIHX,
+        'econ_type': 'open'
+    },
+    'pc_econ_open_ihx_trans': {
+        'cls': HeatPumpPCIHXTrans,
+        'econ_type': 'open'
+    },
+    'ihx_pc_econ_closed': {
+        'cls': HeatPumpIHXPC,
+        'econ_type': 'closed'
+    },
+    'ihx_pc_econ_closed_trans': {
+        'cls': HeatPumpIHXPCTrans,
+        'econ_type': 'closed'
+    },
+    'ihx_pc_econ_closed_ihx': {
+        'cls': HeatPumpIHXPCIHX,
+        'econ_type': 'closed'
+    },
+    'ihx_pc_econ_closed_ihx_trans': {
+        'cls': HeatPumpIHXPCIHXTrans,
+        'econ_type': 'closed'
+    },
+    'ihx_pc_econ_open': {
+        'cls': HeatPumpIHXPC,
+        'econ_type': 'open'
+    },
+    'ihx_pc_econ_open_trans': {
+        'cls': HeatPumpIHXPCTrans,
+        'econ_type': 'open'
+    },
+    'ihx_pc_econ_open_ihx': {
+        'cls': HeatPumpIHXPCIHX,
+        'econ_type': 'open'
+    },
+    'ihx_pc_econ_open_ihx_trans': {
+        'cls': HeatPumpIHXPCIHXTrans,
+        'econ_type': 'open'
+    },
+    'flash': {
+        'cls': HeatPumpFlash,
+        'econ_type': None
+    },
+    'flash_trans': {
+        'cls': HeatPumpFlashTrans,
+        'econ_type': None
+    },
+    'cascade': {
+        'cls': HeatPumpCascade,
+        'econ_type': None
+    },
+    'cascade_trans': {
+        'cls': HeatPumpCascadeTrans,
+        'econ_type': None
+    },
+    'cascade_2ihx': {
+        'cls': HeatPumpCascade2IHX,
+        'econ_type': None
+    },
+    'cascade_2ihx_trans': {
+        'cls': HeatPumpCascade2IHXTrans,
+        'econ_type': None
+    },
+    'cascade_ic': {
+        'cls': HeatPumpCascadeIC,
+        'econ_type': None
+    },
+    'cascade_ic_trans': {
+        'cls': HeatPumpCascadeICTrans,
+        'econ_type': None
+    },
+    'cascade_flash': {
+        'cls': HeatPumpCascadeFlash,
+        'econ_type': None
+    },
+    'cascade_flash_trans': {
+        'cls': HeatPumpCascadeFlashTrans,
+        'econ_type': None
+    },
+    'cascade_econ_closed': {
+        'cls': HeatPumpCascadeEcon,
+        'econ_type': 'closed'
+    },
+    'cascade_econ_closed_trans': {
+        'cls': HeatPumpCascadeEconTrans,
+        'econ_type': 'closed'
+    },
+    'cascade_econ_closed_ihx': {
+        'cls': HeatPumpCascadeEconIHX,
+        'econ_type': 'closed'
+    },
+    'cascade_econ_closed_ihx_trans': {
+        'cls': HeatPumpCascadeEconIHXTrans,
+        'econ_type': 'closed'
+    },
+    'cascade_econ_open': {
+        'cls': HeatPumpCascadeEcon,
+        'econ_type': 'open'
+    },
+    'cascade_econ_open_trans': {
+        'cls': HeatPumpCascadeEconTrans,
+        'econ_type': 'open'
+    },
+    'cascade_econ_open_ihx': {
+        'cls': HeatPumpCascadeEconIHX,
+        'econ_type': 'open'
+    },
+    'cascade_econ_open_ihx_trans': {
+        'cls': HeatPumpCascadeEconIHXTrans,
+        'econ_type': 'open'
+    },
+    'cascade_ihx_econ_closed': {
+        'cls': HeatPumpCascadeIHXEcon,
+        'econ_type': 'closed'
+    },
+    'cascade_ihx_econ_closed_trans': {
+        'cls': HeatPumpCascadeIHXEconTrans,
+        'econ_type': 'closed'
+    },
+    'cascade_ihx_econ_open': {
+        'cls': HeatPumpCascadeIHXEcon,
+        'econ_type': 'open'
+    },
+    'cascade_ihx_econ_open_trans': {
+        'cls': HeatPumpCascadeIHXEconTrans,
+        'econ_type': 'open'
+    },
+    'cascade_pc_econ_closed': {
+        'cls': HeatPumpCascadePC,
+        'econ_type': 'closed'
+    },
+    'cascade_pc_econ_closed_trans': {
+        'cls': HeatPumpCascadePCTrans,
+        'econ_type': 'closed'
+    },
+    'cascade_pc_econ_closed_ihx': {
+        'cls': HeatPumpCascadePCIHX,
+        'econ_type': 'closed'
+    },
+    'cascade_pc_econ_closed_ihx_trans': {
+        'cls': HeatPumpCascadePCIHXTrans,
+        'econ_type': 'closed'
+    },
+    'cascade_pc_econ_open': {
+        'cls': HeatPumpCascadePC,
+        'econ_type': 'open'
+    },
+    'cascade_pc_econ_open_trans': {
+        'cls': HeatPumpCascadePCTrans,
+        'econ_type': 'open'
+    },
+    'cascade_pc_econ_open_ihx': {
+        'cls': HeatPumpCascadePCIHX,
+        'econ_type': 'open'
+    },
+    'cascade_pc_econ_open_ihx_trans': {
+        'cls': HeatPumpCascadePCIHXTrans,
+        'econ_type': 'open'
+    },
+    'cascade_ihx_pc_econ_closed': {
+        'cls': HeatPumpCascadeIHXPC,
+        'econ_type': 'closed'
+    },
+    'cascade_ihx_pc_econ_closed_trans': {
+        'cls': HeatPumpCascadeIHXPCTrans,
+        'econ_type': 'closed'
+    },
+    'cascade_ihx_pc_econ_closed_ihx': {
+        'cls': HeatPumpCascadeIHXPCIHX,
+        'econ_type': 'closed'
+    },
+    'cascade_ihx_pc_econ_closed_ihx_trans': {
+        'cls': HeatPumpCascadeIHXPCIHXTrans,
+        'econ_type': 'closed'
+    },
+    'cascade_ihx_pc_econ_open': {
+        'cls': HeatPumpCascadeIHXPC,
+        'econ_type': 'open'
+    },
+    'cascade_ihx_pc_econ_open_trans': {
+        'cls': HeatPumpCascadeIHXPCTrans,
+        'econ_type': 'open'
+    },
+    'cascade_ihx_pc_econ_open_ihx': {
+        'cls': HeatPumpCascadeIHXPCIHX,
+        'econ_type': 'open'
+    },
+    'cascade_ihx_pc_econ_open_ihx_trans': {
+        'cls': HeatPumpCascadeIHXPCIHXTrans,
+        'econ_type': 'open'
+    },
 }
 
-__model_names = {
-    'HeatPumpSimple': 'simple',
-    'HeatPumpSimpleTrans': 'simple_trans',
-    'HeatPumpIHX': 'ihx',
-    'HeatPumpIHXTrans': 'ihx_trans',
-    'HeatPumpIC': 'ic',
-    'HeatPumpICTrans': 'ic_trans',
-    'HeatPumpEcon_closed': 'econ_closed',
-    'HeatPumpEconTrans_closed': 'econ_closed_trans',
-    'HeatPumpEconIHX_closed': 'econ_closed_ihx',
-    'HeatPumpEconIHXTrans_closed': 'econ_closed_ihx_trans',
-    'HeatPumpIHXEcon_closed': 'ihx_econ_closed',
-    'HeatPumpIHXEconTrans_closed': 'ihx_econ_closed_trans',
-    'HeatPumpEcon_open': 'econ_open',
-    'HeatPumpEconTrans_open': 'econ_open_trans',
-    'HeatPumpEconIHX_open': 'econ_open_ihx',
-    'HeatPumpEconIHXTrans_open': 'econ_open_ihx_trans',
-    'HeatPumpIHXEcon_open': 'ihx_econ_open',
-    'HeatPumpIHXEconTrans_open': 'ihx_econ_open_trans',
-    'HeatPumpPC_closed': 'pc_econ_closed',
-    'HeatPumpPCTrans_closed': 'pc_econ_closed_trans',
-    'HeatPumpIHXPC_closed': 'ihx_pc_econ_closed',
-    'HeatPumpIHXPCTrans_closed': 'ihx_pc_econ_closed_trans',
-    'HeatPumpPCIHX_closed': 'pc_econ_closed_ihx',
-    'HeatPumpPCIHXTrans_closed': 'pc_econ_closed_ihx_trans',
-    'HeatPumpIHXPCIHX_closed': 'ihx_pc_econ_closed_ihx',
-    'HeatPumpIHXPCIHXTrans_closed': 'ihx_pc_econ_closed_ihx_trans',
-    'HeatPumpPC_open': 'pc_econ_open',
-    'HeatPumpPCTrans_open': 'pc_econ_open_trans',
-    'HeatPumpIHXPC_open': 'ihx_pc_econ_open',
-    'HeatPumpIHXPCTrans_open': 'ihx_pc_econ_open_trans',
-    'HeatPumpPCIHX_open': 'pc_econ_open_ihx',
-    'HeatPumpPCIHXTrans_open': 'pc_econ_open_ihx_trans',
-    'HeatPumpIHXPCIHX_open': 'ihx_pc_econ_open_ihx',
-    'HeatPumpIHXPCIHXTrans_open': 'ihx_pc_econ_open_ihx_trans',
-    'HeatPumpFlash': 'flash',
-    'HeatPumpFlashTrans': 'flash_trans',
-    'HeatPumpCascade': 'cascade',
-    'HeatPumpCascadeTrans': 'cascade_trans',
-    'HeatPumpCascade2IHX': 'cascade_2ihx',
-    'HeatPumpCascade2IHXTrans': 'cascade_2ihx_trans',
-    'HeatPumpCascadeIC': 'cascade_ic',
-    'HeatPumpCascadeICTrans': 'cascade_ic_trans',
-    'HeatPumpCascadeEcon_closed': 'cascade_econ_closed',
-    'HeatPumpCascadeEconTrans_closed': 'cascade_econ_closed_trans',
-    'HeatPumpCascadeIHXEcon_closed': 'cascade_ihx_econ_closed',
-    'HeatPumpCascadeIHXEconTrans_closed': 'cascade_ihx_econ_closed_trans',
-    'HeatPumpCascadeEconIHX_closed': 'cascade_econ_closed_ihx',
-    'HeatPumpCascadeEconIHXTrans_closed': 'cascade_econ_closed_ihx_trans',
-    'HeatPumpCascadeEcon_open': 'cascade_econ_open',
-    'HeatPumpCascadeEconTrans_open': 'cascade_econ_open_trans',
-    'HeatPumpCascadeIHXEcon_open': 'cascade_ihx_econ_open',
-    'HeatPumpCascadeIHXEconTrans_open': 'cascade_ihx_econ_open_trans',
-    'HeatPumpCascadeEconIHX_open': 'cascade_econ_open_ihx',
-    'HeatPumpCascadeEconIHXTrans_open': 'cascade_econ_open_ihx_trans',
-    'HeatPumpCascadePC_closed': 'cascade_pc_econ_closed',
-    'HeatPumpCascadePCTrans_closed': 'cascade_pc_econ_closed_trans',
-    'HeatPumpCascadeIHXPC_closed': 'cascade_ihx_pc_econ_closed',
-    'HeatPumpCascadeIHXPCTrans_closed': 'cascade_ihx_pc_econ_closed_trans',
-    'HeatPumpCascadePCIHX_closed': 'cascade_pc_econ_closed_ihx',
-    'HeatPumpCascadePCIHXTrans_closed': 'cascade_pc_econ_closed_ihx_trans',
-    'HeatPumpCascadeIHXPCIHX_closed': 'cascade_ihx_pc_econ_closed_ihx',
-    'HeatPumpCascadeIHXPCIHXTrans_closed': 'cascade_ihx_pc_econ_closed_ihx_trans',
-    'HeatPumpCascadePC_open': 'cascade_pc_econ_open',
-    'HeatPumpCascadePCTrans_open': 'cascade_pc_econ_open_trans',
-    'HeatPumpCascadeIHXPC_open': 'cascade_ihx_pc_econ_open',
-    'HeatPumpCascadeIHXPCTrans_open': 'cascade_ihx_pc_econ_open_trans',
-    'HeatPumpCascadePCIHX_open': 'cascade_pc_econ_open_ihx',
-    'HeatPumpCascadePCIHXTrans_open': 'cascade_pc_econ_open_ihx_trans',
-    'HeatPumpCascadeIHXPCIHX_open': 'cascade_ihx_pc_econ_open_ihx',
-    'HeatPumpCascadeIHXPCIHXTrans_open': 'cascade_ihx_pc_econ_open_ihx_trans',
-    'HeatPumpCascadeFlash': 'cascade_flash',
-    'HeatPumpCascadeFlashTrans': 'cascade_flash_trans'
-}
 
 def get_params(heat_pump_model, econ_type=None):
     """Get params dict for heat pump model class.
@@ -194,12 +338,18 @@ def get_params(heat_pump_model, econ_type=None):
             + "Supported values are 'open' and 'closed'."
             )
 
-    if econ_type is not None:
-        hpfilename = __model_names[f'{heat_pump_model}_{econ_type.lower()}']
+    econ = econ_type.lower() if econ_type is not None else None
+    for model_key, entry in _model_registry.items():
+        if entry['cls'].__name__ == heat_pump_model and entry['econ_type'] == econ:
+            break
     else:
-        hpfilename = __model_names[heat_pump_model]
+        raise ValueError(
+            f"No parameter set found for model '{heat_pump_model}' "
+            f"with econ_type '{econ_type}'."
+            )
+
     parampath = resources.files('heatpumps').joinpath(
-        'models', 'input', f'params_hp_{hpfilename}.json'
+        'models', 'input', f'params_hp_{model_key}.json'
     )
     with open(parampath, 'r', encoding='utf-8') as file:
         params = json.load(file)
@@ -239,7 +389,8 @@ def from_json(filepath):
             f"Valid keys: {sorted(_model_registry)}"
         )
 
-    cls, econ_type = _model_registry[model_key]
+    entry = _model_registry[model_key]
+    cls, econ_type = entry['cls'], entry['econ_type']
 
     if econ_type is not None:
         return cls(params, econ_type=econ_type)
