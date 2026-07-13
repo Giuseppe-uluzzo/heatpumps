@@ -79,6 +79,18 @@
         "ENG": "Heat source",
         "GER": "Wärmequelle"
     },
+    "sb_source_fluid": {
+        "ENG": "Heat source medium",
+        "GER": "Wärmequellenmedium"
+    },
+    "source_fluid_water": {
+        "ENG": "Water",
+        "GER": "Wasser"
+    },
+    "source_fluid_air": {
+        "ENG": "Air",
+        "GER": "Luft"
+    },
     "sb_source_temp_ff": {
         "ENG": "Temperature feed flow",
         "GER": "Temperatur Vorlauf"

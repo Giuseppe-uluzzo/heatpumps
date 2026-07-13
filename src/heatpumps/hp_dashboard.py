@@ -376,6 +376,30 @@ with st.sidebar:
             params['cons']['Q'] *= -1e6
 
         with st.expander(txt('sb_expd_heat_source')):
+            source_fluids = {
+                'H2O': txt('source_fluid_water'),
+                'air': txt('source_fluid_air')
+            }
+            source_keys = list(source_fluids.keys())
+            current_so = params['fluids']['so']
+            so_index = (
+                source_keys.index(current_so)
+                if current_so in source_keys else 0
+            )
+            source_fluid = st.selectbox(
+                txt('sb_source_fluid'),
+                source_keys,
+                index=so_index,
+                format_func=lambda so: source_fluids[so],
+                key='source_fluid'
+            )
+            params['fluids']['so'] = source_fluid
+            if source_fluid == 'air':
+                # A gaseous source operates at ambient pressure; the
+                # recirculation fan only restores the evaporator pressure
+                # drop. See HeatPumpBase._source_is_gaseous.
+                params['B1']['p'] = params['ambient']['p']
+
             params['B1']['T'] = st.slider(
                 txt('sb_source_temp_ff'),
                 min_value=0,
