@@ -10,6 +10,8 @@ New Features
 
 - heatpumps' dashboard now has english and german language modes
 - Other languages can be added easily due to modular translation structure
+- The dashboard can export models as JSON, which can be used to initialize a
+  model class in python or a plain TESPy model
 
 Improvements
 ------------
@@ -21,6 +23,7 @@ Improvements
     - Simulations can be faster
 - Add more flexibility for plotting labels (axes, title, legends)
 - Some instruction text was updated
+- Add documentation for ``from_json`` method
 
 Fixes
 -----
@@ -34,6 +37,8 @@ Contributors
 - `@jfreissmann <https://github.com/jfreissmann>`__
 - `@fwitte <https://github.com/fwitte>`__
 - `@maltefritz <https://github.com/maltefritz>`__
+- `@HaSchneider <https://github.com/HaSchneider>`__ (Thanks for your first
+  contribution!)
 
 **Full changelog:** `v1.4.1...v1.5.0 <https://github.com/jfreissmann/heatpumps/compare/v1.4.1...v1.5.0>`__
 
