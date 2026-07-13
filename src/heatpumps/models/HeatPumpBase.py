@@ -1717,8 +1717,8 @@ class HeatPumpBase:
                 + f'{revisit_tag} ###'
             )
             self.conns['B1'].set_attr(T=T_hs_ff)
-            if T_hs_ff <= 7:
-                self.conns['B2'].set_attr(T=2)
+            if not self._source_is_gaseous() and T_hs_ff <= 7:
+                self.conns['B2'].set_attr(T=2)  # liquid-water freeze guard
             else:
                 self.conns['B2'].set_attr(T=T_hs_ff - deltaT_hs)
             self.conns['C3'].set_attr(T=T_cons_ff)
