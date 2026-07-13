@@ -899,6 +899,10 @@
         "ENG": "Heat Source Recirculation Pump",
         "GER": "Wärmequelle Umwälzpumpe"
     },
+    "comp_label_Heat_Source_Recirculation_Fan": {
+        "ENG": "Heat Source Recirculation Fan",
+        "GER": "Wärmequelle Lüfter"
+    },
     "comp_label_High_Pressure_Internal_Heat_Exchanger": {
         "ENG": "High Pressure Internal Heat Exchanger",
         "GER": "Interner Wärmeübertrager (Hochdruck)"
