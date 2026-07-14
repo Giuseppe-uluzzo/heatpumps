@@ -79,6 +79,18 @@
         "ENG": "Heat source",
         "GER": "Wärmequelle"
     },
+    "sb_source_fluid": {
+        "ENG": "Heat source medium",
+        "GER": "Wärmequellenmedium"
+    },
+    "source_fluid_water": {
+        "ENG": "Water",
+        "GER": "Wasser"
+    },
+    "source_fluid_air": {
+        "ENG": "Air",
+        "GER": "Luft"
+    },
     "sb_source_temp_ff": {
         "ENG": "Temperature feed flow",
         "GER": "Temperatur Vorlauf"
@@ -280,8 +292,8 @@
         "GER": "🧮 Teillast simulieren"
     },
     "main_landing_txt": {
-        "ENG": "The heat pump simulator *heatpumps* is a powerful simulation software for analyzing and evaluating heat pumps.\n\nThis dashboard allows users to control a wide variety of complex thermodynamic models using numerical methods via a simple interface, without requiring specialized knowledge of these systems. This includes both the design of heat pumps and the simulation of their steady-state part-load operation. The simulation results provide insights into the basic behavior, the COP, state variables, and costs of the individual components, as well as the total investment costs of the heat pump under consideration. This enables users to address complex issues that regularly arise in the design and planning of heat pumps.\n\n### Key Features\n\n- Stationary design and partial-load simulation based on [TESPy](https://github.com/oemof/tespy)\n- Parameterization and result visualization using [Streamlit](https://github.com/streamlit/streamlit) dashboard\n- Circuit topologies commonly used in industry, research, and development\n- Subcritical and transcritical processes\n- Wide selection of working fluids due to the integration of [CoolProp](https://github.com/CoolProp/CoolProp)",
-        "GER": "Der Wärmepumpensimulator *heatpumps* ist eine leistungsfähige Simulationssoftware zur Analyse und Bewertung von Wärmepumpen.\n\nMit diesem Dashboard lassen sich eine Vielzahl komplexer thermodynamischer Anlagenmodelle mithilfe numerischer Methoden über eine einfache Oberfläche steuern, ohne Fachkenntnisse über diese vorauszusetzen. Dies beinhaltet sowohl die Auslegung von Wärmepumpen, als auch die Simulation ihres stationären Teillastbetriebs. Dabei geben die Ergebnisse der Simulationen Aufschluss über das prinzipielle Verhalten, den COP, Zustandsgrößen und Kosten der einzelnen Komponenten sowie Gesamtinvestitionskosten der betrachteten Wärmepumpe. Damit wird Zugang zu komplexen Fragestellungen ermöglicht, die regelmäßig in der Konzeption und Planung von Wärmepumpen aufkommen.\n\n### Key Features\n\n- Stationäre Auslegungs- und Teillastsimulation basierend auf [TESPy](https://github.com/oemof/tespy)\n- Parametrisierung and Ergebnisvisualisierung mithilfe eines [Streamlit](https://github.com/streamlit/streamlit) Dashboards\n- In der Industrie, Forschung und Entwicklung gängige Schaltungstopologien\n- Sub- und transkritische Prozesse\n- Große Auswahl an Arbeitsmedien aufgrund der Integration von [CoolProp](https://github.com/CoolProp/CoolProp)"
+        "ENG": "The heat pump simulator *heatpumps* is a powerful simulation software for analyzing and evaluating heat pumps.\n\nThis dashboard allows users to control a wide variety of complex thermodynamic models using numerical methods via a simple interface, without requiring specialized knowledge of these systems. This includes both the design of heat pumps and the simulation of their steady-state part-load operation. The simulation results provide insights into the basic behavior, the COP, state variables, and costs of the individual components, as well as the total investment costs of the heat pump under consideration. This enables users to address complex issues that regularly arise in the design and planning of heat pumps.\n\n### Key Features\n\n- Stationary design and partial-load simulation based on [TESPy](https://github.com/oemof/tespy)\n- Parameterization and result visualization using [Streamlit](https://github.com/streamlit/streamlit) dashboard\n- Water-water and air-water heat pumps\n- Cycle topologies commonly used in industry, research, and development\n- Subcritical and transcritical processes\n- Wide selection of working fluids due to the integration of [CoolProp](https://github.com/CoolProp/CoolProp)",
+        "GER": "Der Wärmepumpensimulator *heatpumps* ist eine leistungsfähige Simulationssoftware zur Analyse und Bewertung von Wärmepumpen.\n\nMit diesem Dashboard lassen sich eine Vielzahl komplexer thermodynamischer Anlagenmodelle mithilfe numerischer Methoden über eine einfache Oberfläche steuern, ohne Fachkenntnisse über diese vorauszusetzen. Dies beinhaltet sowohl die Auslegung von Wärmepumpen, als auch die Simulation ihres stationären Teillastbetriebs. Dabei geben die Ergebnisse der Simulationen Aufschluss über das prinzipielle Verhalten, den COP, Zustandsgrößen und Kosten der einzelnen Komponenten sowie Gesamtinvestitionskosten der betrachteten Wärmepumpe. Damit wird Zugang zu komplexen Fragestellungen ermöglicht, die regelmäßig in der Konzeption und Planung von Wärmepumpen aufkommen.\n\n### Key Features\n\n- Stationäre Auslegungs- und Teillastsimulation basierend auf [TESPy](https://github.com/oemof/tespy)\n- Parametrisierung and Ergebnisvisualisierung mithilfe eines [Streamlit](https://github.com/streamlit/streamlit) Dashboards\n- Wasser-Wasser- und Luft-Wasser-Wärmepumpen\n- In der Industrie, Forschung und Entwicklung gängige Schaltungstopologien\n- Sub- und transkritische Prozesse\n- Große Auswahl an Arbeitsmedien aufgrund der Integration von [CoolProp](https://github.com/CoolProp/CoolProp)"
     },
     "main_btn_run_design": {
         "ENG": "Start design simulation",
@@ -902,6 +914,10 @@
     "comp_label_Heat_Source_Recirculation_Pump": {
         "ENG": "Heat Source Recirculation Pump",
         "GER": "Wärmequelle Umwälzpumpe"
+    },
+    "comp_label_Heat_Source_Recirculation_Fan": {
+        "ENG": "Heat Source Recirculation Fan",
+        "GER": "Wärmequelle Lüfter"
     },
     "comp_label_High_Pressure_Internal_Heat_Exchanger": {
         "ENG": "High Pressure Internal Heat Exchanger",

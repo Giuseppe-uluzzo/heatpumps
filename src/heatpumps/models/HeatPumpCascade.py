@@ -26,9 +26,7 @@ class HeatPumpCascade(HeatPumpCascadeBase):
     def generate_components(self):
         """Initialize components of heat pump."""
         # Heat source
-        self.comps['hs_ff'] = Source('Heat Source Feed Flow')
-        self.comps['hs_bf'] = Sink('Heat Source Back Flow')
-        self.comps['hs_pump'] = Pump('Heat Source Recirculation Pump')
+        self.generate_heat_source_components()
 
         # Heat sink
         self.comps['cons_cc'] = CycleCloser('Consumer Cycle Closer')
@@ -53,7 +51,6 @@ class HeatPumpCascade(HeatPumpCascadeBase):
             )
         self.comps['motor_LT_comp'] = Motor(self.comps['LT_comp'].label + ' Motor')
         self.comps['motor_HT_comp'] = Motor(self.comps['HT_comp'].label + ' Motor')
-        self.comps['motor_hs_pump'] = Motor(self.comps['hs_pump'].label + ' Motor')
         self.comps['motor_cons_pump'] = Motor(self.comps['cons_pump'].label + ' Motor')
 
     def generate_connections(self):
@@ -91,15 +88,7 @@ class HeatPumpCascade(HeatPumpCascadeBase):
             self.comps['LT_comp'], 'out1', self.comps['inter'], 'in1', 'D4'
             )
 
-        self.conns['B1'] = Connection(
-            self.comps['hs_ff'], 'out1', self.comps['evap'], 'in1', 'B1'
-            )
-        self.conns['B2'] = Connection(
-            self.comps['evap'], 'out1', self.comps['hs_pump'], 'in1', 'B2'
-            )
-        self.conns['B3'] = Connection(
-            self.comps['hs_pump'], 'out1', self.comps['hs_bf'], 'in1', 'B3'
-            )
+        self.generate_heat_source_connections()
 
         self.conns['C0'] = Connection(
             self.comps['cons'], 'out1', self.comps['cons_cc'], 'in1', 'C0'
@@ -182,7 +171,6 @@ class HeatPumpCascade(HeatPumpCascadeBase):
         self.conns['D4'].set_attr(
             h=Ref(self.conns['D3'], self._init_vals['dh_rel_comp'], 0)
             )
-        self.comps['hs_pump'].set_attr(eta_s=self.params['hs_pump']['eta_s'])
         self.comps['cons_pump'].set_attr(
             eta_s=self.params['cons_pump']['eta_s']
             )
@@ -218,12 +206,7 @@ class HeatPumpCascade(HeatPumpCascadeBase):
         self.conns['D3'].set_attr(x=self.params['D3']['x'], p=p_evap1)
         self.conns['D0'].set_attr(p=p_cond1, fluid={self.wf1: 1})
         # Heat source
-        self.conns['B1'].set_attr(
-            T=self.params['B1']['T'], p=self.params['B1']['p'],
-            fluid={self.so: 1}
-            )
-        self.conns['B2'].set_attr(T=self.params['B2']['T'])
-        self.conns['B3'].set_attr(p=self.params['B1']['p'])
+        self.parametrize_heat_source()
 
         # Heat sink
         self.conns['C3'].set_attr(

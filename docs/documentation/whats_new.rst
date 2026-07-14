@@ -12,6 +12,7 @@ New Features
 - Other languages can be added easily due to modular translation structure
 - The dashboard can export models as JSON, which can be used to initialize a
   model class in python or a plain TESPy model
+- heatpumps now supports air-source heat pumps
 
 Improvements
 ------------
@@ -24,6 +25,7 @@ Improvements
 - Add more flexibility for plotting labels (axes, title, legends)
 - Some instruction text was updated
 - Add documentation for ``from_json`` method
+- Reduced code duplication
 
 Fixes
 -----
