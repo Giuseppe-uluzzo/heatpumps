@@ -10,6 +10,7 @@ New Features
 
 - heatpumps' dashboard now has english and german language modes
 - Other languages can be added easily due to modular translation structure
+- heatpumps now supports air-source heat pumps
 
 Improvements
 ------------
@@ -21,6 +22,7 @@ Improvements
     - Simulations can be faster
 - Add more flexibility for plotting labels (axes, title, legends)
 - Some instruction text was updated
+- Reduced code duplication
 
 Fixes
 -----

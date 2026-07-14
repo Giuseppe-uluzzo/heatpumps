@@ -11,12 +11,15 @@ import numpy as np
 import pandas as pd
 import platformdirs
 import plotly.graph_objects as go
+from CoolProp.CoolProp import PhaseSI
 from CoolProp.CoolProp import PropsSI as PSI
 from exerpy import ExergyAnalysis
 from exerpy.parser.from_tespy.tespy_config import EXERPY_TESPY_MAPPINGS
 from fluprodia import FluidPropertyDiagram
 from scipy.interpolate import interpn
 from sklearn.linear_model import LinearRegression
+from tespy.components import Compressor, Motor, Pump, Sink, Source
+from tespy.connections import Connection
 from tespy.networks import Network
 from tespy.tools.characteristics import CharLine
 from tespy.tools.characteristics import load_default_char as ldc
@@ -147,6 +150,69 @@ class HeatPumpBase:
         self.wf = self.params['fluids']['wf']
         self.si = self.params['fluids']['si']
         self.so = self.params['fluids']['so']
+
+    def _source_is_gaseous(self):
+        """Return True if the heat source fluid is a gas at the B1 state.
+
+        The recirculation device is chosen from this: a liquid source
+        (e.g. water/brine) is driven by a Pump, a gaseous source
+        (e.g. air) by a Compressor acting as a fan. The structural
+        decision is made once at ``generate_components`` time and only
+        reads static parameters, never solved connection values, so it is
+        safe to call again during the offdesign sweep.
+        """
+        phase = PhaseSI(
+            'T', self.params['B1']['T'] + 273.15,
+            'P', self.params['B1']['p'] * 1e5, self.so
+            )
+        return 'gas' in phase.lower()
+
+    def generate_heat_source_components(self):
+        """Initialize the shared heat source subcycle components.
+
+        The recirculation device is stored under the key ``'hs_pump'``
+        regardless of whether it is a Pump or a Compressor, so the power
+        network wiring (``rotating_comps``, ``motor_hs_pump``,
+        ``E_hs_pump_in/out``) works unchanged for both.
+        """
+        self.comps['hs_ff'] = Source('Heat Source Feed Flow')
+        self.comps['hs_bf'] = Sink('Heat Source Back Flow')
+        if self._source_is_gaseous():
+            self.comps['hs_pump'] = Compressor(
+                'Heat Source Recirculation Fan'
+            )
+        else:
+            self.comps['hs_pump'] = Pump('Heat Source Recirculation Pump')
+        self.comps['motor_hs_pump'] = Motor(
+            self.comps['hs_pump'].label + ' Motor'
+            )
+
+    def generate_heat_source_connections(self):
+        """Initialize the shared heat source subcycle connections.
+
+        Only populates ``self.conns``; the connections are added to the
+        network by each model's bulk ``add_conns`` call, so this helper
+        must run before it.
+        """
+        self.conns['B1'] = Connection(
+            self.comps['hs_ff'], 'out1', self.comps['evap'], 'in1', 'B1'
+            )
+        self.conns['B2'] = Connection(
+            self.comps['evap'], 'out1', self.comps['hs_pump'], 'in1', 'B2'
+            )
+        self.conns['B3'] = Connection(
+            self.comps['hs_pump'], 'out1', self.comps['hs_bf'], 'in1', 'B3'
+            )
+
+    def parametrize_heat_source(self):
+        """Set starting values and parameters of the heat source subcycle."""
+        self.comps['hs_pump'].set_attr(eta_s=self.params['hs_pump']['eta_s'])
+        self.conns['B1'].set_attr(
+            T=self.params['B1']['T'], p=self.params['B1']['p'],
+            fluid={self.so: 1}
+            )
+        self.conns['B2'].set_attr(T=self.params['B2']['T'])
+        self.conns['B3'].set_attr(p=self.params['B1']['p'])
 
     def generate_components(self):
         """Initialize components of heat pump."""
@@ -1651,8 +1717,8 @@ class HeatPumpBase:
                 + f'{revisit_tag} ###'
             )
             self.conns['B1'].set_attr(T=T_hs_ff)
-            if T_hs_ff <= 7:
-                self.conns['B2'].set_attr(T=2)
+            if not self._source_is_gaseous() and T_hs_ff <= 7:
+                self.conns['B2'].set_attr(T=2)  # liquid-water freeze guard
             else:
                 self.conns['B2'].set_attr(T=T_hs_ff - deltaT_hs)
             self.conns['C3'].set_attr(T=T_cons_ff)
