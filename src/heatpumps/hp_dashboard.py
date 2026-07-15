@@ -15,6 +15,33 @@ from simulation import run_design, run_partload
 from streamlit import session_state as ss
 
 
+@st.cache_data
+def load_translations():
+    resourcepath = resources.files('heatpumps')
+    tlpath = os.path.join(
+        resourcepath, 'static', 'translations.json'
+    )
+    with open(tlpath, 'r', encoding='utf-8') as file:
+        ss.tl = json.load(file)
+
+load_translations()
+
+if 'lg' not in ss:
+    ss.lg = 'ENG'
+
+def txt(label_key):
+    """Convenience function to get text from translations."""
+    label_translations = ss.tl.get(label_key, None)
+    if label_translations is None:
+        return ss.tl['fallback_key'][ss.lg]
+
+    translated_label = label_translations.get(ss.lg, None)
+    if label_translations is None:
+        return ss.tl['fallback_lang'][ss.lg]
+
+    return translated_label
+
+
 def switch2design():
     """Switch to design simulation tab."""
     ss.select = txt('mode_option_design')
@@ -105,29 +132,6 @@ def img_to_base64(image_path):
     return base64.b64encode(data).decode()
 
 
-# @st.cache_data    # Uncomment this when translation process is done
-def load_translations():
-    resourcepath = resources.files('heatpumps')
-    tlpath = os.path.join(
-        resourcepath, 'static', 'translations.json'
-    )
-    with open(tlpath, 'r', encoding='utf-8') as file:
-        ss.tl = json.load(file)
-
-
-def txt(label_key):
-    """Convenience function to get text from translations."""
-    label_translations = ss.tl.get(label_key, None)
-    if label_translations is None:
-        return ss.tl['fallback_key'][ss.lg]
-
-    translated_label = label_translations.get(ss.lg, None)
-    if label_translations is None:
-        return ss.tl['fallback_lang'][ss.lg]
-
-    return translated_label
-
-
 def translate_comp_label(label):
     """Translate an English component label to the current dashboard language.
 
@@ -167,6 +171,37 @@ def build_label_map(labels):
     """Build a dict mapping English component labels to translated labels."""
     return {lbl: translate_comp_label(lbl) for lbl in labels}
 
+
+@st.dialog(txt('export_modal_header'))
+def export_modal(hp_model_name, params):
+    debug_json = json.dumps(
+        {'model_key': hp_model_name, 'params': params}, indent=4
+    )
+
+    st.download_button(
+        label=txt('exp_mod_btn_heatpumps'),
+        data=debug_json,
+        file_name=f"{params['setup']['type']}_heatpumps.json",
+        mime='application/json'
+    )
+
+    st.download_button(
+        label=txt('exp_mod_btn_tespy'),
+        data=json.dumps(ss.hp.nw.export(), indent=4),
+        file_name=f"{params['setup']['type']}_tespy.json",
+        mime='application/json'
+    )
+
+
+@st.fragment
+def export_fragment(hp_model_name, params):
+    """Isolate the export button in a fragment so opening the modal (and the
+    download buttons inside it) reruns only this fragment instead of the whole
+    results section."""
+    if st.button(txt('design_btn_export'), width='stretch'):
+        export_modal(hp_model_name, params)
+
+
 src_path = str(resources.files('heatpumps').joinpath('static'))
 icon_path = os.path.join(src_path, 'img', 'icons')
 
@@ -174,8 +209,6 @@ icon_path = os.path.join(src_path, 'img', 'icons')
 refrigpath = str(resources.files('heatpumps').joinpath('static', 'refrigerants.json'))
 with open(refrigpath, 'r', encoding='utf-8') as file:
     refrigerants = json.load(file)
-
-load_translations()
 
 st.set_page_config(
     layout='wide',
@@ -813,7 +846,7 @@ if mode == txt('mode_option_start'):
 
 if mode == txt('mode_option_design'):
     # %% MARK: Design Simulation
-    if not run_sim:
+    if not run_sim and not ss.get('design_sim_success'):
         # %% Topology & Refrigerant
         col_left, col_right = st.columns([1, 4])
 
@@ -863,423 +896,436 @@ if mode == txt('mode_option_design'):
             try:
                 ss.hp = run_design(hp_model_name, params)
                 sim_succeded = True
+                ss.design_sim_success = True
                 st.success(txt('design_sim_success'))
-            except ValueError as e:
+            except Exception as e:
                 sim_succeded = False
-                print(f'ValueError: {e}')
-                st.error(txt('design_sim_error')+ f'"{e}"')
+                ss.design_sim_success = False
 
-        # %% MARK: Results
-        if sim_succeded:
-            with st.spinner(txt('design_sim_spinner_vis')):
+                st.error(txt('design_sim_error') + f'\n\n"{e}"')
 
-                stateconfigpath = str(resources.files('heatpumps').joinpath(
-                    'models', 'input', 'state_diagram_config.json'
-                    ))
-                with open(stateconfigpath, 'r', encoding='utf-8') as file:
-                    config = json.load(file)
-                if hp_model['nr_refrigs'] == 1:
-                    if ss.hp.params['setup']['refrig'] in config:
-                        state_props = config[
-                            ss.hp.params['setup']['refrig']
-                            ]
-                    else:
-                        state_props = config['MISC']
-                if hp_model['nr_refrigs'] == 2:
-                    if ss.hp.params['setup']['refrig1'] in config:
-                        state_props1 = config[
-                            ss.hp.params['setup']['refrig1']
-                            ]
-                    else:
-                        state_props1 = config['MISC']
-                    if ss.hp.params['setup']['refrig2'] in config:
-                        state_props2 = config[
-                            ss.hp.params['setup']['refrig2']
-                            ]
-                    else:
-                        state_props2 = config['MISC']
+    # %% MARK: Results
+    if ss.get('design_sim_success'):
+        with st.spinner(txt('design_sim_spinner_vis')):
 
-                st.header(txt('design_header_results'))
+            stateconfigpath = str(resources.files('heatpumps').joinpath(
+                'models', 'input', 'state_diagram_config.json'
+                ))
+            with open(stateconfigpath, 'r', encoding='utf-8') as file:
+                config = json.load(file)
+            if hp_model['nr_refrigs'] == 1:
+                if ss.hp.params['setup']['refrig'] in config:
+                    state_props = config[
+                        ss.hp.params['setup']['refrig']
+                        ]
+                else:
+                    state_props = config['MISC']
+            if hp_model['nr_refrigs'] == 2:
+                if ss.hp.params['setup']['refrig1'] in config:
+                    state_props1 = config[
+                        ss.hp.params['setup']['refrig1']
+                        ]
+                else:
+                    state_props1 = config['MISC']
+                if ss.hp.params['setup']['refrig2'] in config:
+                    state_props2 = config[
+                        ss.hp.params['setup']['refrig2']
+                        ]
+                else:
+                    state_props2 = config['MISC']
 
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric(
-                    txt('design_res_metric_COP'),
-                    round(ss.hp.cop, 2)
-                )
+            st.header(txt('design_header_results'))
 
-                Q_dot_ab = ss.hp.heat_output / 1e6
-                col2.metric(
-                    txt('design_res_metric_Q_dot_out'),
-                    f"{Q_dot_ab:.2f} MW"
-                )
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric(
+                txt('design_res_metric_COP'),
+                round(ss.hp.cop, 2)
+            )
 
-                col3.metric(
-                    txt('design_res_metric_P_in'),
-                    f"{ss.hp.power_input/1e6:.2f} MW"
-                )
+            Q_dot_ab = ss.hp.heat_output / 1e6
+            col2.metric(
+                txt('design_res_metric_Q_dot_out'),
+                f"{Q_dot_ab:.2f} MW"
+            )
 
-                Q_dot_zu = abs(ss.hp.comps['evap'].Q.val/1e6)
-                col4.metric(
-                    txt('design_res_metric_Q_dot_in'),
-                    f'{Q_dot_zu:.2f} MW'
-                )
+            col3.metric(
+                txt('design_res_metric_P_in'),
+                f"{ss.hp.power_input/1e6:.2f} MW"
+            )
 
-                with st.expander(txt('design_tab_topo_refrig')):
-                    # %% Topology & Refrigerant
-                    col_left, col_right = st.columns([1, 4])
+            Q_dot_zu = abs(ss.hp.comps['evap'].Q.val/1e6)
+            col4.metric(
+                txt('design_res_metric_Q_dot_in'),
+                f'{Q_dot_zu:.2f} MW'
+            )
 
-                    with col_left:
-                        st.subheader(txt('design_header_topo'))
+            with st.expander(txt('design_tab_topo_refrig')):
+                # %% Topology & Refrigerant
+                col_left, col_right = st.columns([1, 4])
 
-                        top_file = os.path.join(
-                            src_path, 'img', 'topologies',
-                            f'hp_{hp_model_name_topology}_label.svg'
-                            )
-                        if is_dark:
-                            top_file_dark = os.path.join(
-                                src_path, 'img', 'topologies',
-                                f'hp_{hp_model_name_topology}_label_dark.svg'
-                                )
-                            if os.path.exists(top_file_dark):
-                                top_file = top_file_dark
+                with col_left:
+                    st.subheader(txt('design_header_topo'))
 
-                        st.image(top_file)
-
-                    with col_right:
-                        st.subheader(txt('design_header_refrig'))
-
-                        if hp_model['nr_refrigs'] == 1:
-                            st.dataframe(df_refrig, width='stretch')
-                        elif hp_model['nr_refrigs'] == 2:
-                            st.markdown(txt('design_subheader_HT'))
-                            st.dataframe(df_refrig2, width='stretch')
-                            st.markdown(txt('design_subheader_LT'))
-                            st.dataframe(df_refrig1, width='stretch')
-
-                        st.write(txt('design_refrig_info'))
-
-                with st.expander(txt('design_expd_state_diagrams')):
-                    # %% State Diagrams
-                    col_left, _, col_right = st.columns([0.495, 0.01, 0.495])
-                    _, slider_left, _, slider_right, _ = (
-                        st.columns([0.5, 8, 1, 8, 0.5])
+                    top_file = os.path.join(
+                        src_path, 'img', 'topologies',
+                        f'hp_{hp_model_name_topology}_label.svg'
                         )
-
                     if is_dark:
-                        state_diagram_style = 'dark'
-                    else:
-                        state_diagram_style = 'light'
+                        top_file_dark = os.path.join(
+                            src_path, 'img', 'topologies',
+                            f'hp_{hp_model_name_topology}_label_dark.svg'
+                            )
+                        if os.path.exists(top_file_dark):
+                            top_file = top_file_dark
+
+                    st.image(top_file)
+
+                with col_right:
+                    st.subheader(txt('design_header_refrig'))
 
                     if hp_model['nr_refrigs'] == 1:
-                        state_diagram_label_map = build_label_map(
-                            ss.hp.get_plotting_states().keys()
-                            )
-                    else:
-                        state_diagram_label_map = build_label_map(
-                            list(ss.hp.get_plotting_states(cycle=1).keys())
-                            + list(ss.hp.get_plotting_states(cycle=2).keys())
-                            )
-
-                    with col_left:
-                        # %% Log(p)-h-Diagram
-                        st.subheader(txt('design_subheader_ph'))
-                        if hp_model['nr_refrigs'] == 1:
-                            xmin, xmax = calc_limits(
-                                wf=ss.hp.wf, prop='h', padding_rel=0.35
-                                )
-                            ymin, ymax = calc_limits(
-                                wf=ss.hp.wf, prop='p', padding_rel=0.25,
-                                scale='log'
-                                )
-
-                            diagram = ss.hp.generate_state_diagram(
-                                diagram_type='logph',
-                                figsize=(12, 7.5),
-                                xlims=(xmin, xmax), ylims=(ymin, ymax),
-                                style=state_diagram_style,
-                                return_diagram=True, display_info=False,
-                                open_file=False, savefig=False,
-                                xlabel=txt('plot_axis_h'),
-                                ylabel=txt('plot_axis_p'),
-                                label_map=state_diagram_label_map
-                            )
-                            st.pyplot(diagram.fig)
-
-                        elif hp_model['nr_refrigs'] == 2:
-                            xmin1, xmax1 = calc_limits(
-                                wf=ss.hp.wf1, prop='h', padding_rel=0.35
-                                )
-                            ymin1, ymax1 = calc_limits(
-                                wf=ss.hp.wf1, prop='p', padding_rel=0.25,
-                                scale='log'
-                                )
-
-                            xmin2, xmax2 = calc_limits(
-                                wf=ss.hp.wf2, prop='h', padding_rel=0.35
-                                )
-                            ymin2, ymax2 = calc_limits(
-                                wf=ss.hp.wf2, prop='p', padding_rel=0.25,
-                                scale='log'
-                                )
-
-                            diagram1, diagram2 = ss.hp.generate_state_diagram(
-                                diagram_type='logph',
-                                figsize=(12, 7.5),
-                                xlims=((xmin1, xmax1), (xmin2, xmax2)),
-                                ylims=((ymin1, ymax1), (ymin2, ymax2)),
-                                style=state_diagram_style,
-                                return_diagram=True, display_info=False,
-                                savefig=False, open_file=False,
-                                xlabel=txt('plot_axis_h'),
-                                ylabel=txt('plot_axis_p'),
-                                label_map=state_diagram_label_map
-                            )
-                            st.pyplot(diagram1.fig)
-                            st.pyplot(diagram2.fig)
-
-                    with col_right:
-                        # %% T-s-Diagram
-                        st.subheader(txt('design_subheader_Ts'))
-                        if hp_model['nr_refrigs'] == 1:
-                            xmin, xmax = calc_limits(
-                                wf=ss.hp.wf, prop='s', padding_rel=0.35
-                                )
-                            ymin, ymax = calc_limits(
-                                wf=ss.hp.wf, prop='T', padding_rel=0.25
-                                )
-
-                            diagram = ss.hp.generate_state_diagram(
-                                diagram_type='Ts',
-                                figsize=(12, 7.5),
-                                xlims=(xmin, xmax), ylims=(ymin, ymax),
-                                style=state_diagram_style,
-                                return_diagram=True, display_info=False,
-                                open_file=False, savefig=False,
-                                xlabel=txt('plot_axis_s'),
-                                ylabel=txt('plot_axis_T'),
-                                label_map=state_diagram_label_map
-                            )
-                            st.pyplot(diagram.fig)
-
-                        elif hp_model['nr_refrigs'] == 2:
-                            xmin1, xmax1 = calc_limits(
-                                wf=ss.hp.wf1, prop='s', padding_rel=0.35
-                                )
-                            ymin1, ymax1 = calc_limits(
-                                wf=ss.hp.wf1, prop='T', padding_rel=0.25
-                                )
-
-                            xmin2, xmax2 = calc_limits(
-                                wf=ss.hp.wf2, prop='s', padding_rel=0.35
-                                )
-                            ymin2, ymax2 = calc_limits(
-                                wf=ss.hp.wf2, prop='T', padding_rel=0.25
-                                )
-
-                            diagram1, diagram2 = ss.hp.generate_state_diagram(
-                                diagram_type='Ts',
-                                figsize=(12, 7.5),
-                                xlims=((xmin1, xmax1), (xmin2, xmax2)),
-                                ylims=((ymin1, ymax1), (ymin2, ymax2)),
-                                style=state_diagram_style,
-                                return_diagram=True, display_info=False,
-                                savefig=False, open_file=False,
-                                xlabel=txt('plot_axis_s'),
-                                ylabel=txt('plot_axis_T'),
-                                label_map=state_diagram_label_map
-                            )
-                            st.pyplot(diagram1.fig)
-                            st.pyplot(diagram2.fig)
-
-                with st.expander(txt('design_expd_state_var')):
-                    # %% State Quantities
-                    state_quantities = (
-                        ss.hp.nw.results['Connection'].copy()
-                        )
-                    state_quantities = state_quantities.loc[
-                        :, ~state_quantities.columns.str.contains(
-                            '_unit', case=False, regex=False
-                            )
-                        ]
-                    try:
-                        state_quantities['water'] = (
-                            state_quantities['water'] == 1.0
-                            )
-                    except KeyError:
-                        state_quantities['H2O'] = (
-                            state_quantities['H2O'] == 1.0
-                            )
-                    if hp_model['nr_refrigs'] == 1:
-                        refrig = ss.hp.params['setup']['refrig']
-                        state_quantities[refrig] = (
-                            state_quantities[refrig] == 1.0
-                            )
+                        st.dataframe(df_refrig, width='stretch')
                     elif hp_model['nr_refrigs'] == 2:
-                        refrig1 = ss.hp.params['setup']['refrig1']
-                        state_quantities[refrig1] = (
-                            state_quantities[refrig1] == 1.0
+                        st.markdown(txt('design_subheader_HT'))
+                        st.dataframe(df_refrig2, width='stretch')
+                        st.markdown(txt('design_subheader_LT'))
+                        st.dataframe(df_refrig1, width='stretch')
+
+                    st.write(txt('design_refrig_info'))
+
+            with st.expander(txt('design_expd_state_diagrams')):
+                # %% State Diagrams
+                col_left, _, col_right = st.columns([0.495, 0.01, 0.495])
+                _, slider_left, _, slider_right, _ = (
+                    st.columns([0.5, 8, 1, 8, 0.5])
+                    )
+
+                if is_dark:
+                    state_diagram_style = 'dark'
+                else:
+                    state_diagram_style = 'light'
+
+                if hp_model['nr_refrigs'] == 1:
+                    state_diagram_label_map = build_label_map(
+                        ss.hp.get_plotting_states().keys()
+                        )
+                else:
+                    state_diagram_label_map = build_label_map(
+                        list(ss.hp.get_plotting_states(cycle=1).keys())
+                        + list(ss.hp.get_plotting_states(cycle=2).keys())
+                        )
+
+                with col_left:
+                    # %% Log(p)-h-Diagram
+                    st.subheader(txt('design_subheader_ph'))
+                    if hp_model['nr_refrigs'] == 1:
+                        xmin, xmax = calc_limits(
+                            wf=ss.hp.wf, prop='h', padding_rel=0.35
                             )
-                        refrig2 = ss.hp.params['setup']['refrig2']
-                        state_quantities[refrig2] = (
-                            state_quantities[refrig2] == 1.0
+                        ymin, ymax = calc_limits(
+                            wf=ss.hp.wf, prop='p', padding_rel=0.25,
+                            scale='log'
                             )
-                    for col in ('td_dew', 'td_bubble', 'T_dew', 'T_bubble'):
-                        if col in state_quantities.columns:
-                            del state_quantities[col]
-                    for col in ('source', 'target'):
-                        if col in state_quantities.columns:
-                            state_quantities[col] = (
-                                state_quantities[col].apply(translate_comp_label)
+
+                        diagram = ss.hp.generate_state_diagram(
+                            diagram_type='logph',
+                            figsize=(12, 7.5),
+                            xlims=(xmin, xmax), ylims=(ymin, ymax),
+                            style=state_diagram_style,
+                            return_diagram=True, display_info=False,
+                            open_file=False, savefig=False,
+                            xlabel=txt('plot_axis_h'),
+                            ylabel=txt('plot_axis_p'),
+                            label_map=state_diagram_label_map
+                        )
+                        st.pyplot(diagram.fig)
+
+                    elif hp_model['nr_refrigs'] == 2:
+                        xmin1, xmax1 = calc_limits(
+                            wf=ss.hp.wf1, prop='h', padding_rel=0.35
+                            )
+                        ymin1, ymax1 = calc_limits(
+                            wf=ss.hp.wf1, prop='p', padding_rel=0.25,
+                            scale='log'
+                            )
+
+                        xmin2, xmax2 = calc_limits(
+                            wf=ss.hp.wf2, prop='h', padding_rel=0.35
+                            )
+                        ymin2, ymax2 = calc_limits(
+                            wf=ss.hp.wf2, prop='p', padding_rel=0.25,
+                            scale='log'
+                            )
+
+                        diagram1, diagram2 = ss.hp.generate_state_diagram(
+                            diagram_type='logph',
+                            figsize=(12, 7.5),
+                            xlims=((xmin1, xmax1), (xmin2, xmax2)),
+                            ylims=((ymin1, ymax1), (ymin2, ymax2)),
+                            style=state_diagram_style,
+                            return_diagram=True, display_info=False,
+                            savefig=False, open_file=False,
+                            xlabel=txt('plot_axis_h'),
+                            ylabel=txt('plot_axis_p'),
+                            label_map=state_diagram_label_map
+                        )
+                        st.pyplot(diagram1.fig)
+                        st.pyplot(diagram2.fig)
+
+                with col_right:
+                    # %% T-s-Diagram
+                    st.subheader(txt('design_subheader_Ts'))
+                    if hp_model['nr_refrigs'] == 1:
+                        xmin, xmax = calc_limits(
+                            wf=ss.hp.wf, prop='s', padding_rel=0.35
+                            )
+                        ymin, ymax = calc_limits(
+                            wf=ss.hp.wf, prop='T', padding_rel=0.25
+                            )
+
+                        diagram = ss.hp.generate_state_diagram(
+                            diagram_type='Ts',
+                            figsize=(12, 7.5),
+                            xlims=(xmin, xmax), ylims=(ymin, ymax),
+                            style=state_diagram_style,
+                            return_diagram=True, display_info=False,
+                            open_file=False, savefig=False,
+                            xlabel=txt('plot_axis_s'),
+                            ylabel=txt('plot_axis_T'),
+                            label_map=state_diagram_label_map
+                        )
+                        st.pyplot(diagram.fig)
+
+                    elif hp_model['nr_refrigs'] == 2:
+                        xmin1, xmax1 = calc_limits(
+                            wf=ss.hp.wf1, prop='s', padding_rel=0.35
+                            )
+                        ymin1, ymax1 = calc_limits(
+                            wf=ss.hp.wf1, prop='T', padding_rel=0.25
+                            )
+
+                        xmin2, xmax2 = calc_limits(
+                            wf=ss.hp.wf2, prop='s', padding_rel=0.35
+                            )
+                        ymin2, ymax2 = calc_limits(
+                            wf=ss.hp.wf2, prop='T', padding_rel=0.25
+                            )
+
+                        diagram1, diagram2 = ss.hp.generate_state_diagram(
+                            diagram_type='Ts',
+                            figsize=(12, 7.5),
+                            xlims=((xmin1, xmax1), (xmin2, xmax2)),
+                            ylims=((ymin1, ymax1), (ymin2, ymax2)),
+                            style=state_diagram_style,
+                            return_diagram=True, display_info=False,
+                            savefig=False, open_file=False,
+                            xlabel=txt('plot_axis_s'),
+                            ylabel=txt('plot_axis_T'),
+                            label_map=state_diagram_label_map
+                        )
+                        st.pyplot(diagram1.fig)
+                        st.pyplot(diagram2.fig)
+
+            with st.expander(txt('design_expd_state_var')):
+                # %% State Quantities
+                state_quantities = (
+                    ss.hp.nw.results['Connection'].copy()
+                    )
+                state_quantities = state_quantities.loc[
+                    :, ~state_quantities.columns.str.contains(
+                        '_unit', case=False, regex=False
+                        )
+                    ]
+                try:
+                    state_quantities['water'] = (
+                        state_quantities['water'] == 1.0
+                        )
+                except KeyError:
+                    state_quantities['H2O'] = (
+                        state_quantities['H2O'] == 1.0
+                        )
+                if hp_model['nr_refrigs'] == 1:
+                    refrig = ss.hp.params['setup']['refrig']
+                    state_quantities[refrig] = (
+                        state_quantities[refrig] == 1.0
+                        )
+                elif hp_model['nr_refrigs'] == 2:
+                    refrig1 = ss.hp.params['setup']['refrig1']
+                    state_quantities[refrig1] = (
+                        state_quantities[refrig1] == 1.0
+                        )
+                    refrig2 = ss.hp.params['setup']['refrig2']
+                    state_quantities[refrig2] = (
+                        state_quantities[refrig2] == 1.0
+                        )
+                for col in ('td_dew', 'td_bubble', 'T_dew', 'T_bubble'):
+                    if col in state_quantities.columns:
+                        del state_quantities[col]
+                for col in ('source', 'target'):
+                    if col in state_quantities.columns:
+                        state_quantities[col] = (
+                            state_quantities[col].apply(translate_comp_label)
+                            )
+                for col in state_quantities.columns:
+                    if state_quantities[col].dtype == np.float64:
+                        state_quantities[col] = (
+                            state_quantities[col].apply(
+                                lambda x: f'{x:.5}'
                                 )
-                    for col in state_quantities.columns:
-                        if state_quantities[col].dtype == np.float64:
-                            state_quantities[col] = (
-                                state_quantities[col].apply(
-                                    lambda x: f'{x:.5}'
-                                    )
-                                )
-                    state_quantities['x'] = state_quantities['x'].apply(
-                        lambda x: '-' if float(x) < 0 else x
+                            )
+                state_quantities['x'] = state_quantities['x'].apply(
+                    lambda x: '-' if float(x) < 0 else x
+                    )
+                state_quantities.rename(
+                    columns={
+                        'source': txt('state_col_source'),
+                        'source_id': txt('state_col_source_id'),
+                        'target': txt('state_col_target'),
+                        'target_id': txt('state_col_target_id'),
+                        'phase': txt('state_col_phase'),
+                        'm': 'm in kg/s',
+                        'p': 'p in bar',
+                        'h': 'h in kJ/kg',
+                        'T': 'T in °C',
+                        'v': 'v in m³/kg',
+                        'vol': 'vol in m³/s',
+                        's': 's in kJ/(kgK)'
+                        },
+                    inplace=True)
+                st.dataframe(
+                    data=state_quantities, width='stretch'
+                    )
+
+            with st.expander(txt('design_expd_eco')):
+                # %% Eco Results
+                ss.hp.calc_cost(
+                    ref_year='2013', **costcalcparams
+                    )
+
+                col1, col2 = st.columns(2)
+                invest_total = ss.hp.cost_total
+                col1.metric(
+                    txt('design_eco_inv_total'),
+                    f'{invest_total:,.0f} €'
+                    )
+                inv_sepc = (
+                    invest_total
+                    / abs(ss.hp.params["cons"]["Q"]/1e6)
+                    )
+                col2.metric(
+                    txt('design_eco_inv_spec'),
+                    f'{inv_sepc:,.0f} €/MW'
+                    )
+                cost_label_map = build_label_map(ss.hp.cost.keys())
+                costdata = pd.DataFrame({
+                    cost_label_map.get(k, k): [round(v, 2)]
+                    for k, v in ss.hp.cost.items()
+                    })
+                st.dataframe(
+                    costdata, width='stretch', hide_index=True
+                    )
+
+                st.write(txt('design_eco_info'))
+
+            with st.expander(txt('design_expd_exergy')):
+                # %% Exergy Analysis
+                st.header(txt('design_header_exergy'))
+
+                col1, col2, col3, col4, col5 = st.columns(5)
+                col1.metric(
+                    'Epsilon',
+                    f'{ss.hp.ean.epsilon*1e2:.2f} %'
+                    )
+                col2.metric(
+                    'E_F',
+                    f'{(ss.hp.ean.E_F)/1e6:.2f} MW'
+                    )
+                col3.metric(
+                    'E_P',
+                    f'{(ss.hp.ean.E_P)/1e6:.2f} MW'
+                    )
+                col4.metric(
+                    'E_D',
+                    f'{(ss.hp.ean.E_D)/1e6:.2f} MW'
+                    )
+                col5.metric(
+                    'E_L',
+                    f'{(ss.hp.ean.E_L)/1e3:.2f} KW'
+                    )
+
+                st.subheader(txt('design_subheader_exergy_comp'))
+                exergy_component_result, _, _ = ss.hp.ean.exergy_results(
+                    print_results=False
+                    )
+                exergy_component_result = (
+                    exergy_component_result.set_index('Component')
+                    )
+                exergy_component_result.index = [
+                    translate_comp_label(lbl)
+                    for lbl in exergy_component_result.index
+                    ]
+                exergy_component_result.dropna(
+                    subset=['E_F [kW]'], inplace=True
+                    )
+                for col in ['E_F [kW]', 'E_P [kW]', 'E_D [kW]']:
+                    exergy_component_result[col] = (
+                        exergy_component_result[col].round(2)
                         )
-                    state_quantities.rename(
-                        columns={
-                            'source': txt('state_col_source'),
-                            'source_id': txt('state_col_source_id'),
-                            'target': txt('state_col_target'),
-                            'target_id': txt('state_col_target_id'),
-                            'phase': txt('state_col_phase'),
-                            'm': 'm in kg/s',
-                            'p': 'p in bar',
-                            'h': 'h in kJ/kg',
-                            'T': 'T in °C',
-                            'v': 'v in m³/kg',
-                            'vol': 'vol in m³/s',
-                            's': 's in kJ/(kgK)'
-                            },
-                        inplace=True)
-                    st.dataframe(
-                        data=state_quantities, width='stretch'
+                for col in ['epsilon [%]', 'y [%]', 'y* [%]']:
+                    exergy_component_result[col] = (
+                        exergy_component_result[col].round(4)
+                        )
+                st.dataframe(
+                    data=exergy_component_result, width='stretch'
+                    )
+
+                col6, _, col7 = st.columns([0.495, 0.01, 0.495])
+                with col6:
+                    st.subheader(txt('design_subheader_exergy_grass'))
+                    diagram_placeholder_sankey = st.empty()
+
+                    diagram_sankey = ss.hp.generate_sankey_diagram()
+                    diagram_placeholder_sankey.plotly_chart(
+                        diagram_sankey, width='stretch'
                         )
 
-                with st.expander(txt('design_expd_eco')):
-                    # %% Eco Results
-                    ss.hp.calc_cost(
-                        ref_year='2013', **costcalcparams
-                        )
+                with col7:
+                    st.subheader(txt('design_subheader_exergy_waterfall'))
+                    diagram_placeholder_waterfall = st.empty()
 
-                    col1, col2 = st.columns(2)
-                    invest_total = ss.hp.cost_total
-                    col1.metric(
-                        txt('design_eco_inv_total'),
-                        f'{invest_total:,.0f} €'
-                        )
-                    inv_sepc = (
-                        invest_total
-                        / abs(ss.hp.params["cons"]["Q"]/1e6)
-                        )
-                    col2.metric(
-                        txt('design_eco_inv_spec'),
-                        f'{inv_sepc:,.0f} €/MW'
-                        )
-                    cost_label_map = build_label_map(ss.hp.cost.keys())
-                    costdata = pd.DataFrame({
-                        cost_label_map.get(k, k): [round(v, 2)]
-                        for k, v in ss.hp.cost.items()
-                        })
-                    st.dataframe(
-                        costdata, width='stretch', hide_index=True
-                        )
-
-                    st.write(txt('design_eco_info'))
-
-                with st.expander(txt('design_expd_exergy')):
-                    # %% Exergy Analysis
-                    st.header(txt('design_header_exergy'))
-
-                    col1, col2, col3, col4, col5 = st.columns(5)
-                    col1.metric(
-                        'Epsilon',
-                        f'{ss.hp.ean.epsilon*1e2:.2f} %'
-                        )
-                    col2.metric(
-                        'E_F',
-                        f'{(ss.hp.ean.E_F)/1e6:.2f} MW'
-                        )
-                    col3.metric(
-                        'E_P',
-                        f'{(ss.hp.ean.E_P)/1e6:.2f} MW'
-                        )
-                    col4.metric(
-                        'E_D',
-                        f'{(ss.hp.ean.E_D)/1e6:.2f} MW'
-                        )
-                    col5.metric(
-                        'E_L',
-                        f'{(ss.hp.ean.E_L)/1e3:.2f} KW'
-                        )
-
-                    st.subheader(txt('design_subheader_exergy_comp'))
-                    exergy_component_result, _, _ = ss.hp.ean.exergy_results(
+                    df_exergy, _, _ = ss.hp.ean.exergy_results(
                         print_results=False
+                    )
+                    wf_label_map = build_label_map(df_exergy['Component'])
+                    dia_wf_fig, dia_wf_ax = (
+                        ss.hp.generate_waterfall_diagram(
+                            return_fig_ax=True,
+                            xlabel=txt('plot_axis_exergy_kW'),
+                            fuel_label=txt('comp_label_Fuel_Exergy'),
+                            product_label=txt('comp_label_Product_Exergy'),
+                            label_map=wf_label_map
                         )
-                    exergy_component_result = (
-                        exergy_component_result.set_index('Component')
-                        )
-                    exergy_component_result.index = [
-                        translate_comp_label(lbl)
-                        for lbl in exergy_component_result.index
-                        ]
-                    exergy_component_result.dropna(
-                        subset=['E_F [kW]'], inplace=True
-                        )
-                    for col in ['E_F [kW]', 'E_P [kW]', 'E_D [kW]']:
-                        exergy_component_result[col] = (
-                            exergy_component_result[col].round(2)
-                            )
-                    for col in ['epsilon [%]', 'y [%]', 'y* [%]']:
-                        exergy_component_result[col] = (
-                            exergy_component_result[col].round(4)
-                            )
-                    st.dataframe(
-                        data=exergy_component_result, width='stretch'
-                        )
+                    )
+                    diagram_placeholder_waterfall.pyplot(
+                        dia_wf_fig, width='stretch'
+                    )
 
-                    col6, _, col7 = st.columns([0.495, 0.01, 0.495])
-                    with col6:
-                        st.subheader(txt('design_subheader_exergy_grass'))
-                        diagram_placeholder_sankey = st.empty()
+                st.write(txt('design_exergy_info'))
 
-                        diagram_sankey = ss.hp.generate_sankey_diagram()
-                        diagram_placeholder_sankey.plotly_chart(
-                            diagram_sankey, width='stretch'
-                            )
+            st.divider()
 
-                    with col7:
-                        st.subheader(txt('design_subheader_exergy_waterfall'))
-                        diagram_placeholder_waterfall = st.empty()
+            st.info(txt('design_to_od_info'))
 
-                        df_exergy, _, _ = ss.hp.ean.exergy_results(
-                            print_results=False
-                        )
-                        wf_label_map = build_label_map(df_exergy['Component'])
-                        dia_wf_fig, dia_wf_ax = (
-                            ss.hp.generate_waterfall_diagram(
-                                return_fig_ax=True,
-                                xlabel=txt('plot_axis_exergy_kW'),
-                                fuel_label=txt('comp_label_Fuel_Exergy'),
-                                product_label=txt('comp_label_Product_Exergy'),
-                                label_map=wf_label_map
-                            )
-                        )
-                        diagram_placeholder_waterfall.pyplot(
-                            dia_wf_fig, width='stretch'
-                        )
+            col_btn_pl, col_btn_save = st.columns(2)
 
-                    st.write(txt('design_exergy_info'))
+            col_btn_pl.button(
+                txt('sb_btn_run_offdesign'),
+                on_click=switch2partload,
+                width='stretch'
+            )
 
-                st.info(txt('design_to_od_info'))
-
-                st.button(txt('sb_btn_run_offdesign'), on_click=switch2partload)
+            with col_btn_save:
+                export_fragment(hp_model_name, params)
 
 if mode == txt('mode_option_partload'):
     # %% MARK: Offdesign Simulation

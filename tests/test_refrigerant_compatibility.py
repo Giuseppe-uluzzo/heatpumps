@@ -1,5 +1,5 @@
 """Pytest-parametrized compatibility matrix: every model from
-``parameters.__model_names`` against every refrigerant listed in
+``parameters._model_registry`` against every refrigerant listed in
 ``static/refrigerants.json``, asserting the design solve actually
 converged (``hp.nw.status == 0``), not just that it ran without raising.
 
@@ -20,7 +20,6 @@ import os
 
 import pytest
 
-import heatpumps.models as M
 from heatpumps import parameters as P
 
 logging.disable(logging.CRITICAL)
@@ -48,7 +47,7 @@ def _set_refrigerant(params, cp_name):
 
 
 REFRIGERANTS = _load_refrigerants()
-MODEL_KEYS = sorted(P.__dict__['__model_names'])
+MODEL_KEYS = sorted(P._model_registry)
 
 CASES = [
     (model_key, refrig_label)
@@ -62,15 +61,12 @@ CASE_IDS = [
 
 @pytest.mark.parametrize('model_key,refrig_label', CASES, ids=CASE_IDS)
 def test_model_refrigerant_converges(model_key, refrig_label):
-    if '_closed' in model_key or '_open' in model_key:
-        base, econ = model_key.rsplit('_', 1)
-    else:
-        base, econ = model_key, None
+    entry = P._model_registry[model_key]
+    cls, econ = entry['cls'], entry['econ_type']
 
-    params = P.get_params(base, econ_type=econ)
+    params = P.get_params(cls.__name__, econ_type=econ)
     _set_refrigerant(params, REFRIGERANTS[refrig_label])
 
-    cls = getattr(M, base)
     hp = cls(params, econ_type=econ) if econ else cls(params)
     hp.run_model(iterinfo=False, exergy_analysis=False)
 
