@@ -22,9 +22,9 @@ def load_translations():
         resourcepath, 'static', 'translations.json'
     )
     with open(tlpath, 'r', encoding='utf-8') as file:
-        ss.tl = json.load(file)
+        return json.load(file)
 
-load_translations()
+ss.tl = load_translations()
 
 if 'lg' not in ss:
     ss.lg = 'ITA'
