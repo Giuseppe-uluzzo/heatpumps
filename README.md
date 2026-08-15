@@ -26,6 +26,8 @@ python -m pip install -e .[dev]
 In alternativa, lo script `scripts\install-local.ps1` crea automaticamente
 l'ambiente `.venv` e installa il progetto editable.
 
+Su Windows puoi anche fare doppio clic su `scripts\install-local.cmd`.
+
 ### Avvio della dashboard
 
 ```powershell
@@ -34,6 +36,8 @@ heatpumps-dashboard
 
 Oppure usa `scripts\run-local.ps1`. Le modifiche ai file Python vengono caricate
 al riavvio della dashboard senza dover ricreare un eseguibile.
+
+Su Windows puoi avviare la dashboard con doppio clic su `scripts\run-local.cmd`.
 
 ### Using the heat pump model classes
 
