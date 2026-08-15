@@ -32,7 +32,7 @@ extensions = [
 # master_doc = 'contents'
 # names, years, etc
 project = 'heatpumps'
-year = '2025'
+year = '2021-2026'
 author = 'Jonas Freißmann & Malte Fritz'
 copyright = '{0}, {1}'.format(year, author)
 

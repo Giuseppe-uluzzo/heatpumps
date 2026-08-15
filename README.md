@@ -2,94 +2,82 @@
 
 # heatpumps
 
-Simulazione stazionaria del dimensionamento e del funzionamento a carico
-parziale di un'ampia raccolta di topologie di pompe di calore.
+Steady-state simulation of design and partload operation of a wide collection of heat pump topologies.
 
-## Funzionalita principali
+## Key Features
 
-- Simulazione stazionaria di dimensionamento e carico parziale basata su
-  [TESPy](https://github.com/oemof/tespy)
-- Parametrizzazione e visualizzazione dei risultati tramite dashboard
-  [Streamlit](https://github.com/streamlit/streamlit)
-- Supporto di topologie standard industriali e di configurazioni ancora in
-  fase di ricerca e sviluppo
-- Processi subcritici e transcritici
-- Ampia scelta di refrigeranti grazie all'integrazione di
-  [CoolProp](https://github.com/CoolProp/CoolProp)
+  - Steady-state simulation of design and partload operation based on [TESPy](https://github.com/oemof/tespy)
+  - Parametrization and result visualisation through a [Streamlit](https://github.com/streamlit/streamlit) dashboard
+  - Water-water and air-water heat pumps
+  - Industry standard, as well as topologies still in research and developement, supported
+  - Sub- and transcritical processes
+  - Wide variety of refrigerants due to the integration of [CoolProp](https://github.com/CoolProp/CoolProp)
 
-## Per iniziare
+## Getting started
 
-Di seguito trovi le istruzioni essenziali per iniziare rapidamente con
-*heatpumps*. Per maggiori informazioni consulta la
-[documentazione online](https://heatpumps.readthedocs.io).
+Below are instructions to quickly get started with heatpumps. For more information, see the official [online documentation](https://heatpumps.readthedocs.io).
 
-### Installazione
+### Installation
 
-L'installazione di *heatpumps* e semplice con pip. Se usi
-[Miniforge](https://github.com/conda-forge/miniforge), puoi creare e attivare
-un ambiente pulito cosi:
+Installation of *heatpumps* is very easy using pip. If you are using [Miniforge](https://github.com/conda-forge/miniforge), you can create and activate a clean environment like this:
 
-```bash
+```
 conda create -n my_new_env python=3.11
 ```
 
-```bash
+```
 conda activate my_new_env
 ```
 
-Installa quindi *heatpumps* con:
+Then simply install *heatpumps* with the following command:
 
-```bash
+```
 python -m pip install heatpumps
 ```
 
-Se vuoi lavorare su una versione modificabile del pacchetto, ad esempio per
-contribuire al progetto o testare modifiche locali, clona il repository da
-GitHub e usa:
+If you want to use an editable version of the package, e.g. if you want to contribute to the project and test your own changes, skip the command above, clone the repository from GitHub and use this one:
 
-```bash
+```
 python -m pip install -e .[dev]
 ```
 
-Il flag `-e` rende effettive direttamente le modifiche locali; l'opzione
-`[dev]` installa anche le dipendenze opzionali per lo sviluppo.
+The addition of the "-e" flag allows for changes to directly have an effect and adding "[dev]" to the installation path tells pip to also install the optional dependencies for developers.
 
-### Avviare la dashboard
+### Run the dashboard
 
-Il pacchetto include un comando per avviare direttamente la dashboard:
+The heatpumps package comes with a command to run the dashboard directly from your terminal. Running the dashboard is as easy as typing the following command:
 
-```bash
+```
 heatpumps-dashboard
 ```
 
-### Usare le classi dei modelli
+### Using the heat pump model classes
 
-Puoi importare le classi dei modelli di pompe di calore nei tuoi script in
-questo modo:
+To use the heat pump model classes in your own scripts, you can import them as follows:
 
 ```python
 from heatpumps.models import HeatPumpSimple, HeatPumpEconIHX
 from heatpumps.parameters import get_params
 
-# Modello a ciclo semplice
+# Simple cycle model
 params = get_params('HeatPumpSimple')
 
 params['setup']['refrig'] = 'R1234yf'
 params['fluids']['wf'] = 'R1234yf'
 
-params['C3']['T'] = 85  # temperatura di mandata del pozzo termico
-params['C1']['T'] = 50  # temperatura di ritorno del pozzo termico
+params['C3']['T'] = 85  # feed flow temperature of heat sink
+params['C1']['T'] = 50  # return flow temperature of heat sink
 
 hp = HeatPumpSimple(params=params)
 
 hp.run_model()
 hp.generate_state_diagram(diagram_type='logph', savefig=True, open_file=True)
 
-# Compressione in serie con economizzatore chiuso e scambiatore interno
+# Serial compression with closed economizer and internal heat exchanger
 econ_type = 'closed'
 params = get_params('HeatPumpEconIHX', econ_type=econ_type)
 
-params['ihx']['dT_sh'] = 7.5  # surriscaldamento tramite scambiatore interno
+params['ihx']['dT_sh'] = 7.5  # superheating by internal heat exchanger
 
 hp = HeatPumpEconIHX(params=params, econ_type=econ_type)
 
@@ -97,9 +85,9 @@ hp.run_model()
 hp.perform_exergy_analysis(print_results=True)
 ```
 
-## Licenza
+## License
 
-Copyright (c) 2021-2026 Jonas Freissmann and Malte Fritz
+Copyright (c) 2021-2026 Jonas Freißmann and Malte Fritz
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
