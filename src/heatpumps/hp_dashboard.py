@@ -27,7 +27,7 @@ def load_translations():
 load_translations()
 
 if 'lg' not in ss:
-    ss.lg = 'ENG'
+    ss.lg = 'ITA'
 
 def txt(label_key):
     """Convenience function to get text from translations."""
@@ -36,7 +36,7 @@ def txt(label_key):
         return ss.tl['fallback_key'][ss.lg]
 
     translated_label = label_translations.get(ss.lg, None)
-    if label_translations is None:
+    if translated_label is None:
         return ss.tl['fallback_lang'][ss.lg]
 
     return translated_label
@@ -227,11 +227,12 @@ with st.sidebar:
     st.image(logo, width='stretch')
 
     lang_selected = st.selectbox(
-        'Language', ['English', 'German'],
+        'Lingua', ['Italiano', 'English', 'German'],
         key='select_lang', label_visibility='hidden'
     )
 
     shortlang = {
+        'Italiano': 'ITA',
         'English': 'ENG',
         'German': 'GER',
     }

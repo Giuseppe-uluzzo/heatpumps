@@ -1,55 +1,39 @@
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://heatpumps.streamlit.app/)
-
 # heatpumps
 
-Steady-state simulation of design and partload operation of a wide collection of heat pump topologies.
+Simulazione stazionaria del dimensionamento e del funzionamento a carico
+parziale di un'ampia raccolta di topologie di pompe di calore.
 
-## Key Features
+## Funzionalita principali
 
-  - Steady-state simulation of design and partload operation based on [TESPy](https://github.com/oemof/tespy)
-  - Parametrization and result visualisation through a [Streamlit](https://github.com/streamlit/streamlit) dashboard
-  - Water-water and air-water heat pumps
-  - Industry standard, as well as topologies still in research and developement, supported
-  - Sub- and transcritical processes
-  - Wide variety of refrigerants due to the integration of [CoolProp](https://github.com/CoolProp/CoolProp)
+- Simulazioni di dimensionamento e carico parziale basate su [TESPy](https://github.com/oemof/tespy)
+- Dashboard [Streamlit](https://github.com/streamlit/streamlit) con interfaccia italiana, inglese e tedesca
+- Pompe di calore acqua-acqua e aria-acqua
+- Topologie industriali e configurazioni in fase di ricerca e sviluppo
+- Processi subcritici e transcritici
+- Ampia scelta di refrigeranti grazie a [CoolProp](https://github.com/CoolProp/CoolProp)
 
-## Getting started
+## Installazione locale
 
-Below are instructions to quickly get started with heatpumps. For more information, see the official [online documentation](https://heatpumps.readthedocs.io).
+Per lavorare sul codice in modo iterativo, usa Python 3.11 e installa il progetto
+in modalita editable:
 
-### Installation
-
-Installation of *heatpumps* is very easy using pip. If you are using [Miniforge](https://github.com/conda-forge/miniforge), you can create and activate a clean environment like this:
-
-```
+```powershell
 conda create -n my_new_env python=3.11
-```
-
-```
 conda activate my_new_env
-```
-
-Then simply install *heatpumps* with the following command:
-
-```
-python -m pip install heatpumps
-```
-
-If you want to use an editable version of the package, e.g. if you want to contribute to the project and test your own changes, skip the command above, clone the repository from GitHub and use this one:
-
-```
 python -m pip install -e .[dev]
 ```
 
-The addition of the "-e" flag allows for changes to directly have an effect and adding "[dev]" to the installation path tells pip to also install the optional dependencies for developers.
+In alternativa, lo script `scripts\install-local.ps1` crea automaticamente
+l'ambiente `.venv` e installa il progetto editable.
 
-### Run the dashboard
+### Avvio della dashboard
 
-The heatpumps package comes with a command to run the dashboard directly from your terminal. Running the dashboard is as easy as typing the following command:
-
-```
+```powershell
 heatpumps-dashboard
 ```
+
+Oppure usa `scripts\run-local.ps1`. Le modifiche ai file Python vengono caricate
+al riavvio della dashboard senza dover ricreare un eseguibile.
 
 ### Using the heat pump model classes
 
