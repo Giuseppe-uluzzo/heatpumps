@@ -924,6 +924,16 @@
     "GER": "HFO",
     "ITA": "HFO"
   },
+  "refrig_name_R1224yd(Z)": {
+    "ENG": "R1224yd(Z)",
+    "GER": "R1224yd(Z)",
+    "ITA": "R1224yd(Z)"
+  },
+  "refrig_type_R1224yd(Z)": {
+    "ENG": "HFO",
+    "GER": "HFO",
+    "ITA": "HFO"
+  },
   "refrig_name_R1233zd(E)": {
     "ENG": "R1233zd(E)",
     "GER": "R1233zd(E)",

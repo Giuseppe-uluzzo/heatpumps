@@ -11,6 +11,8 @@ parziale di un'ampia raccolta di topologie di pompe di calore.
 - Topologie industriali e configurazioni in fase di ricerca e sviluppo
 - Processi subcritici e transcritici
 - Ampia scelta di refrigeranti grazie a [CoolProp](https://github.com/CoolProp/CoolProp)
+- Integrazione opzionale con REFPROP tramite `REFPROP_ROOT`; `R1224yd(Z)` usa
+  automaticamente CoolProp se la versione locale di REFPROP non lo contiene.
 
 ## Installazione locale
 
@@ -27,6 +29,18 @@ In alternativa, lo script `scripts\install-local.ps1` crea automaticamente
 l'ambiente `.venv` e installa il progetto editable.
 
 Su Windows puoi anche fare doppio clic su `scripts\install-local.cmd`.
+
+### REFPROP
+
+Se REFPROP è installato in un percorso non standard, imposta prima la variabile
+di ambiente:
+
+```powershell
+$env:REFPROP_ROOT = 'C:\percorso\alla\cartella\REFPROP'
+```
+
+La cartella deve contenere `REFPRP64.DLL`. Il percorso dell'installazione locale
+viene rilevato automaticamente quando si trova in una posizione standard.
 
 ### Avvio della dashboard
 
