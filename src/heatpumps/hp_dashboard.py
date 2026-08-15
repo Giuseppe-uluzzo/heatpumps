@@ -14,6 +14,38 @@ from simulation import run_design, run_partload
 from streamlit import session_state as ss
 
 
+UI_LABELS = {
+    'Auswahl Modus': 'Selezione modalita',
+    'Auslegung': 'Dimensionamento',
+    'Teillast': 'Carico parziale',
+    'Einfacher Kreis': 'Ciclo semplice',
+    'Zwischenkühlung': 'Interrefrigerazione',
+    'Economizer': 'Economizzatore',
+    'Flashtank': 'Serbatoio flash',
+    'Kaskadierter Kreis': 'Ciclo a cascata',
+    'Allgemein': 'Generale',
+    'Interne WÜT': 'Scambiatore interno',
+    'Transkritisch': 'Transcritico',
+    'Geschlossen': 'Chiuso',
+    'Offen': 'Aperto',
+    'Reihenschaltung': 'Collegamento in serie',
+    'Parallelschaltung': 'Collegamento in parallelo',
+    'Doppelte interne WÜT': 'Doppio scambiatore interno',
+    'doppelte interne WÜT': 'doppio scambiatore interno',
+    'interne WÜT': 'scambiatore interno',
+    'Konstant': 'Costante',
+    'Variabel': 'Variabile',
+}
+
+
+def tr_label(label):
+    """Translate compact UI labels while keeping internal values unchanged."""
+    translated = str(label)
+    for source, target in UI_LABELS.items():
+        translated = translated.replace(source, target)
+    return translated
+
+
 def switch2design():
     """Switch to design simulation tab."""
     ss.select = 'Auslegung'
@@ -97,7 +129,7 @@ def img_to_base64(image_path):
     return base64.b64encode(data).decode()
 
 
-@st.dialog("Kontaktdaten")
+@st.dialog("Contatti")
 def footer():
     st.markdown(f"""
         <div style='font-size: 1.0em;'>
@@ -165,7 +197,7 @@ with st.sidebar:
 
     mode = st.selectbox(
         'Auswahl Modus', ['Start', 'Auslegung', 'Teillast'],
-        key='select', label_visibility='hidden'
+        key='select', label_visibility='hidden', format_func=tr_label
         )
 
     st.markdown("""---""")
@@ -173,13 +205,13 @@ with st.sidebar:
     # %% MARK: Design
     if mode == 'Auslegung':
         ss.rerun_req = True
-        st.header('Auslegung der Wärmepumpe')
+        st.header('Dimensionamento della pompa di calore')
 
-        with st.expander('Setup', expanded=True):
+        with st.expander('Configurazione', expanded=True):
             base_topology = st.selectbox(
-                'Grundtopologie',
+                'Topologia di base',
                 var.base_topologies,
-                index=0, key='base_topology'
+                index=0, key='base_topology', format_func=tr_label
             )
 
             models = []
@@ -189,12 +221,17 @@ with st.sidebar:
                         models.append(mdata['display_name'])
 
             model_name = st.selectbox(
-                'Wärmepumpenmodell', models, index=0, key='model'
+                'Modello di pompa di calore', models, index=0, key='model',
+                format_func=tr_label
             )
 
             process_type = st.radio(
-                'Prozessart', options=('subkritisch', 'transkritisch'),
-                horizontal=True
+                'Tipo di processo', options=('subkritisch', 'transkritisch'),
+                horizontal=True,
+                format_func=lambda label: {
+                    'subkritisch': 'subcritico',
+                    'transkritisch': 'transcritico',
+                }[label]
             )
 
             if process_type == 'transkritisch':
@@ -220,7 +257,7 @@ with st.sidebar:
             with open(parampath, 'r', encoding='utf-8') as file:
                 params = json.load(file)
 
-        with st.expander('Kältemittel'):
+        with st.expander('Refrigerante'):
             if hp_model['nr_refrigs'] == 1:
                 refrig_index = None
                 for ridx, (rlabel, rdata) in enumerate(refrigerants.items()):
@@ -232,7 +269,7 @@ with st.sidebar:
                         break
 
                 refrig_label = st.selectbox(
-                    'Kältemittel', refrigerants.keys(), index=refrig_index,
+                    'Refrigerante', refrigerants.keys(), index=refrig_index,
                     key='refrigerant', label_visibility='hidden'
                     )
                 params['setup']['refrig'] = refrigerants[refrig_label]['CP']
@@ -250,7 +287,7 @@ with st.sidebar:
                         break
 
                 refrig2_label = st.selectbox(
-                    'Kältemittel (Hochtemperaturkreis)', refrigerants.keys(),
+                    'Refrigerante (circuito ad alta temperatura)', refrigerants.keys(),
                     index=refrig2_index, key='refrigerant2'
                     )
                 params['setup']['refrig2'] = refrigerants[refrig2_label]['CP']
@@ -267,7 +304,7 @@ with st.sidebar:
                         break
 
                 refrig1_label = st.selectbox(
-                    'Kältemittel (Niedertemperaturkreis)', refrigerants.keys(),
+                    'Refrigerante (circuito a bassa temperatura)', refrigerants.keys(),
                     index=refrig1_index, key='refrigerant1'
                     )
                 params['setup']['refrig1'] = refrigerants[refrig1_label]['CP']
@@ -286,35 +323,35 @@ with st.sidebar:
         ss.p_crit = p_crit
 
         if 'trans' in hp_model_name:
-            with st.expander('Transkritischer Druck'):
+            with st.expander('Pressione transcritica'):
                 params['A0']['p'] = st.slider(
-                    'Wert in bar', min_value=ss.p_crit,
+                    'Valore in bar', min_value=ss.p_crit,
                     value=params['A0']['p'], max_value=300, format='%d bar',
                     key='p_trans_out'
                     )
 
-        with st.expander('Thermische Nennleistung'):
+        with st.expander('Potenza termica nominale'):
             params['cons']['Q'] = st.number_input(
-                'Wert in MW', value=abs(params['cons']['Q']/1e6),
+                'Valore in MW', value=abs(params['cons']['Q']/1e6),
                 step=0.1, key='Q_N'
                 )
             params['cons']['Q'] *= -1e6
 
-        with st.expander('Wärmequelle'):
+        with st.expander('Sorgente termica'):
             params['B1']['T'] = st.slider(
-                'Temperatur Vorlauf', min_value=0, max_value=T_crit,
-                value=params['B1']['T'], format='%d°C', key='T_heatsource_ff'
+                'Temperatura di mandata', min_value=0, max_value=T_crit,
+                value=params['B1']['T'], format='%d °C', key='T_heatsource_ff'
                 )
             params['B2']['T'] = st.slider(
-                'Temperatur Rücklauf', min_value=0, max_value=T_crit,
-                value=params['B2']['T'], format='%d°C', key='T_heatsource_bf'
+                'Temperatura di ritorno', min_value=0, max_value=T_crit,
+                value=params['B2']['T'], format='%d °C', key='T_heatsource_bf'
                 )
 
             invalid_temp_diff = params['B2']['T'] >= params['B1']['T']
             if invalid_temp_diff:
                 st.error(
-                    'Die Rücklauftemperatur muss niedriger sein, als die '
-                    + 'Vorlauftemperatur.'
+                    'La temperatura di ritorno deve essere inferiore alla '
+                    + 'temperatura di mandata.'
                     )
 
         # TODO: Aktuell wird T_mid im Modell als Mittelwert zwischen von Ver-
@@ -325,117 +362,117 @@ with st.sidebar:
         #     with st.expander('Zwischenwärmeübertrager'):
         #         param['design']['T_mid'] = st.slider(
         #             'Mittlere Temperatur', min_value=0, max_value=T_crit,
-        #             value=40, format='%d°C', key='T_mid'
+        #             value=40, format='%d °C', key='T_mid'
         #             )
 
-        with st.expander('Wärmesenke'):
+        with st.expander('Pozzo termico'):
             T_max_sink = T_crit
             if 'trans' in hp_model_name:
                 T_max_sink = 200  # °C -- Ad hoc value, maybe find better one
 
             params['C3']['T'] = st.slider(
-                'Temperatur Vorlauf', min_value=0, max_value=T_max_sink,
-                value=params['C3']['T'], format='%d°C', key='T_consumer_ff'
+                'Temperatura di mandata', min_value=0, max_value=T_max_sink,
+                value=params['C3']['T'], format='%d °C', key='T_consumer_ff'
             )
             params['C1']['T'] = st.slider(
-                'Temperatur Rücklauf', min_value=0, max_value=T_max_sink,
-                value=params['C1']['T'], format='%d°C', key='T_consumer_bf'
+                'Temperatura di ritorno', min_value=0, max_value=T_max_sink,
+                value=params['C1']['T'], format='%d °C', key='T_consumer_bf'
             )
 
             invalid_temp_diff = params['C1']['T'] >= params['C3']['T']
             if invalid_temp_diff:
                 st.error(
-                    'Die Rücklauftemperatur muss niedriger sein, als die '
-                    + 'Vorlauftemperatur.'
+                    'La temperatura di ritorno deve essere inferiore alla '
+                    + 'temperatura di mandata.'
                 )
             invalid_temp_diff = params['C1']['T'] <= params['B1']['T']
             if invalid_temp_diff:
                 st.error(
-                    'Die Temperatur der Wärmesenke muss höher sein, als die '
-                    + 'der Wärmequelle.'
+                    'La temperatura del pozzo termico deve essere superiore '
+                    + 'a quella della sorgente termica.'
                 )
 
         if hp_model['nr_ihx'] != 0:
             max_dT = int(round(params['C3']['T'] - params['B2']['T'], 0))
-            with st.expander('Interne Wärmerübertragung'):
+            with st.expander('Scambio termico interno'):
                 if hp_model['nr_ihx'] == 1:
                     params['ihx']['dT_sh'] = st.slider(
-                        'Überhitzung/Unterkühlung', value=5,
-                        min_value=0, max_value=max_dT, format='%d°C',
+                        'Surriscaldamento/sottoraffreddamento', value=5,
+                        min_value=0, max_value=max_dT, format='%d °C',
                         key='dT_sh')
                 if hp_model['nr_ihx'] > 1:
                     dT_ihx = {}
                     for i in range(1, hp_model['nr_ihx']+1):
                         dT_ihx[i] = st.slider(
-                            f'Nr. {i}: Überhitzung/Unterkühlung', value=5,
-                            min_value=0, max_value=max_dT, format='%d°C',
+                            f'N. {i}: surriscaldamento/sottoraffreddamento', value=5,
+                            min_value=0, max_value=max_dT, format='%d °C',
                             key=f'dT_ihx{i}'
                             )
                         params[f'ihx{i}']['dT_sh'] = dT_ihx[i]
 
-        with st.expander('Verdichter'):
+        with st.expander('Compressore'):
             nr_refrigs = hp_model['nr_refrigs']
             if hp_model['comp_var'] is None and nr_refrigs == 1:
                 params['comp']['eta_s'] = st.slider(
-                    'Wirkungsgrad $\eta_s$', min_value=0, max_value=100,
+                    'Rendimento $\eta_s$', min_value=0, max_value=100,
                     step=1, value=int(params['comp']['eta_s']*100),
                     format='%d%%'
                     ) / 100
             elif hp_model['comp_var'] is not None and nr_refrigs == 1:
                 params['comp1']['eta_s'] = st.slider(
-                    'Wirkungsgrad $\eta_{s,1}$', min_value=0, max_value=100,
+                    'Rendimento $\eta_{s,1}$', min_value=0, max_value=100,
                     step=1, value=int(params['comp1']['eta_s']*100),
                     format='%d%%'
                     ) / 100
                 params['comp2']['eta_s'] = st.slider(
-                    'Wirkungsgrad $\eta_{s,2}$', min_value=0, max_value=100,
+                    'Rendimento $\eta_{s,2}$', min_value=0, max_value=100,
                     step=1, value=int(params['comp2']['eta_s']*100),
                     format='%d%%'
                     ) / 100
             elif hp_model['comp_var'] is None and nr_refrigs == 2:
                 params['HT_comp']['eta_s'] = st.slider(
-                    'Wirkungsgrad $\eta_{s,HTK}$', min_value=0, max_value=100,
+                    'Rendimento $\eta_{s,HTK}$', min_value=0, max_value=100,
                     step=1, value=int(params['HT_comp']['eta_s']*100),
                     format='%d%%'
                     ) / 100
                 params['LT_comp']['eta_s'] = st.slider(
-                    'Wirkungsgrad $\eta_{s,NTK}$', min_value=0, max_value=100,
+                    'Rendimento $\eta_{s,NTK}$', min_value=0, max_value=100,
                     step=1, value=int(params['LT_comp']['eta_s']*100),
                     format='%d%%'
                     ) / 100
             elif hp_model['comp_var'] is not None and nr_refrigs == 2:
                 params['HT_comp1']['eta_s'] = st.slider(
-                    'Wirkungsgrad $\eta_{s,HTK,1}$', min_value=0,
+                    'Rendimento $\eta_{s,HTK,1}$', min_value=0,
                     max_value=100, step=1, 
                     value=int(params['HT_comp1']['eta_s']*100), format='%d%%'
                     ) / 100
                 params['HT_comp2']['eta_s'] = st.slider(
-                    'Wirkungsgrad $\eta_{s,HTK,2}$', min_value=0,
+                    'Rendimento $\eta_{s,HTK,2}$', min_value=0,
                     max_value=100, step=1,
                     value=int(params['HT_comp2']['eta_s']*100), format='%d%%'
                     ) / 100
                 params['LT_comp1']['eta_s'] = st.slider(
-                    'Wirkungsgrad $\eta_{s,NTK,1}$', min_value=0,
+                    'Rendimento $\eta_{s,NTK,1}$', min_value=0,
                     max_value=100, step=1,
                     value=int(params['LT_comp1']['eta_s']*100), format='%d%%'
                     ) / 100
                 params['LT_comp2']['eta_s'] = st.slider(
-                    'Wirkungsgrad $\eta_{s,NTK,2}$', min_value=0,
+                    'Rendimento $\eta_{s,NTK,2}$', min_value=0,
                     max_value=100, step=1,
                     value=int(params['LT_comp2']['eta_s']*100), format='%d%%'
                     ) / 100
 
-        with st.expander('Umgebungsbedingungen (Exergie)'):
+        with st.expander('Condizioni ambientali (exergia)'):
             params['ambient']['T'] = st.slider(
-                'Temperatur', min_value=1, max_value=45, step=1,
-                value=params['ambient']['T'], format='%d°C', key='T_env'
+                'Temperatura', min_value=1, max_value=45, step=1,
+                value=params['ambient']['T'], format='%d °C', key='T_env'
                 )
             params['ambient']['p'] = st.number_input(
-                'Druck in bar', value=float(params['ambient']['p']), step=0.01,
+                'Pressione in bar', value=float(params['ambient']['p']), step=0.01,
                 format='%.4f', key='p_env'
                 )
 
-        with st.expander('Parameter zur Kostenkalkulation'):
+        with st.expander('Parametri per il calcolo dei costi'):
             costcalcparams = {}
 
             cepcipath = str(resources.files('heatpumps').joinpath(
@@ -445,57 +482,57 @@ with st.sidebar:
                 cepci = json.load(file)
 
             costcalcparams['current_year'] = st.selectbox(
-                'Jahr der Kostenkalkulation',
+                'Anno del calcolo dei costi',
                 options=sorted(list(cepci.keys()), reverse=True),
                 key='current_year'
             )
 
             costcalcparams['k_evap'] = st.slider(
-                'Wärmedurchgangskoeffizient (Verdampfung)',
+                'Coefficiente di scambio termico (evaporazione)',
                 min_value=0, max_value=5000, step=10,
                 value=1500, format='%d W/m²K', key='k_evap'
                 )
 
             costcalcparams['k_cond'] = st.slider(
-                'Wärmedurchgangskoeffizient (Verflüssigung)',
+                'Coefficiente di scambio termico (condensazione)',
                 min_value=0, max_value=5000, step=10,
                 value=3500, format='%d W/m²K', key='k_cond'
                 )
 
             if 'trans' in hp_model_name:
                 costcalcparams['k_trans'] = st.slider(
-                    'Wärmedurchgangskoeffizient (transkritisch)',
+                    'Coefficiente di scambio termico (transcritico)',
                     min_value=0, max_value=1000, step=5,
                     value=60, format='%d W/m²K', key='k_trans'
                     )
 
             costcalcparams['k_misc'] = st.slider(
-                'Wärmedurchgangskoeffizient (Sonstige)',
+                'Coefficiente di scambio termico (altri componenti)',
                 min_value=0, max_value=1000, step=5,
                 value=50, format='%d W/m²K', key='k_misc'
                 )
 
             costcalcparams['residence_time'] = st.slider(
-                'Verweildauer Flashtank',
+                'Tempo di permanenza nel serbatoio flash',
                 min_value=0, max_value=60, step=1,
                 value=10, format='%d s', key='residence_time'
                 )
 
         ss.hp_params = params
 
-        run_sim = st.button('🧮 Auslegung ausführen')
+        run_sim = st.button('🧮 Esegui dimensionamento')
         # run_sim = True
     # autorun = st.checkbox('AutoRun Simulation', value=True)
 
     # %% MARK: Offdesign
     if mode == 'Teillast' and 'hp' in ss:
         params = ss.hp_params
-        st.header('Teillastsimulation der Wärmepumpe')
+        st.header('Simulazione a carico parziale della pompa di calore')
 
-        with st.expander('Teillast'):
+        with st.expander('Carico parziale'):
             (params['offdesign']['partload_min'],
              params['offdesign']['partload_max']) = st.slider(
-                'Bezogen auf Nennmassenstrom',
+                'Riferito alla portata massica nominale',
                 min_value=0, max_value=120, step=5,
                 value=(30, 100), format='%d%%', key='pl_slider'
                 )
@@ -509,10 +546,11 @@ with st.sidebar:
                     / 0.1
                     ) + 1)
 
-        with st.expander('Wärmequelle'):
+        with st.expander('Sorgente termica'):
             type_hs = st.radio(
-                'Wärmequelle', ('Konstant', 'Variabel'), index=1,
-                horizontal=True, key='temp_hs', label_visibility='hidden'
+                'Sorgente termica', ('Konstant', 'Variabel'), index=1,
+                horizontal=True, key='temp_hs', label_visibility='hidden',
+                format_func=tr_label
                 )
             if type_hs == 'Konstant':
                 params['offdesign']['T_hs_ff_start'] = (
@@ -524,7 +562,7 @@ with st.sidebar:
                 params['offdesign']['T_hs_ff_steps'] = 1
 
                 text = (
-                    f'Temperatur <p style="color:{var.st_color_hex}">'
+                    f'Temperatura <p style="color:{var.st_color_hex}">'
                     + f'{params["offdesign"]["T_hs_ff_start"]} °C'
                     + r'</p>'
                     )
@@ -532,22 +570,22 @@ with st.sidebar:
 
             elif type_hs == 'Variabel':
                 params['offdesign']['T_hs_ff_start'] = st.slider(
-                    'Starttemperatur',
+                    'Temperatura iniziale',
                     min_value=0, max_value=ss.T_crit, step=1,
                     value=int(
                         ss.hp.params['B1']['T']
                         - 5
                         ),
-                    format='%d°C', key='T_hs_ff_start_slider'
+                    format='%d °C', key='T_hs_ff_start_slider'
                     )
                 params['offdesign']['T_hs_ff_end'] = st.slider(
-                    'Endtemperatur',
+                    'Temperatura finale',
                     min_value=0, max_value=ss.T_crit, step=1,
                     value=int(
                         ss.hp.params['B1']['T']
                         + 5
                         ),
-                    format='%d°C', key='T_hs_ff_end_slider'
+                    format='%d °C', key='T_hs_ff_end_slider'
                     )
                 params['offdesign']['T_hs_ff_steps'] = int(np.ceil(
                     (params['offdesign']['T_hs_ff_end']
@@ -555,10 +593,11 @@ with st.sidebar:
                     / 3
                     ) + 1)
 
-        with st.expander('Wärmesenke'):
+        with st.expander('Pozzo termico'):
             type_cons = st.radio(
-                'Wärmesenke', ('Konstant', 'Variabel'), index=1,
-                horizontal=True, key='temp_cons', label_visibility='hidden'
+                'Pozzo termico', ('Konstant', 'Variabel'), index=1,
+                horizontal=True, key='temp_cons', label_visibility='hidden',
+                format_func=tr_label
                 )
             if type_cons == 'Konstant':
                 params['offdesign']['T_cons_ff_start'] = (
@@ -570,7 +609,7 @@ with st.sidebar:
                 params['offdesign']['T_cons_ff_steps'] = 1
 
                 text = (
-                    f'Temperatur <p style="color:{var.st_color_hex}">'
+                    f'Temperatura <p style="color:{var.st_color_hex}">'
                     + f'{params["offdesign"]["T_cons_ff_start"]} °C'
                     + r'</p>'
                     )
@@ -578,22 +617,22 @@ with st.sidebar:
 
             elif type_cons == 'Variabel':
                 params['offdesign']['T_cons_ff_start'] = st.slider(
-                    'Starttemperatur',
+                    'Temperatura iniziale',
                     min_value=0, max_value=ss.T_crit, step=1,
                     value=int(
                         ss.hp.params['C3']['T']
                         - 10
                         ),
-                    format='%d°C', key='T_cons_ff_start_slider'
+                    format='%d °C', key='T_cons_ff_start_slider'
                     )
                 params['offdesign']['T_cons_ff_end'] = st.slider(
-                    'Endtemperatur',
+                    'Temperatura finale',
                     min_value=0, max_value=ss.T_crit, step=1,
                     value=int(
                         ss.hp.params['C3']['T']
                         + 10
                         ),
-                    format='%d°C', key='T_cons_ff_end_slider'
+                    format='%d °C', key='T_cons_ff_end_slider'
                     )
                 params['offdesign']['T_cons_ff_steps'] = int(np.ceil(
                     (params['offdesign']['T_cons_ff_end']
@@ -602,7 +641,7 @@ with st.sidebar:
                     ) + 1)
 
         ss.hp_params = params
-        run_pl_sim = st.button('🧮 Teillast simulieren')
+        run_pl_sim = st.button('🧮 Simula carico parziale')
 
 # %% MARK: Main Content
 st.title('*heatpumps*')
@@ -611,81 +650,80 @@ if mode == 'Start':
     # %% MARK: Landing Page
     st.write(
         """
-        Der Wärmepumpensimulator *heatpumps* ist eine leistungsfähige
-        Simulationssoftware zur Analyse und Bewertung von Wärmepumpen.
+        Il simulatore di pompe di calore *heatpumps* e un software avanzato
+        per l'analisi e la valutazione di pompe di calore.
 
-        Mit diesem Dashboard lassen sich eine Vielzahl komplexer
-        thermodynamischer Anlagenmodelle mithilfe numerischer Methoden über
-        eine einfache Oberfläche steuern, ohne Fachkenntnisse über diese
-        vorauszusetzen. Dies beinhaltet sowohl die Auslegung von Wärmepumpen,
-        als auch die Simulation ihres stationären Teillastbetriebs. Dabei geben
-        die Ergebnisse der Simulationen Aufschluss über das prinzipielle
-        Verhalten, den COP, Zustandsgrößen und Kosten der einzelnen Komponenten
-        sowie Gesamtinvestitionskosten der betrachteten Wärmepumpe. Damit
-        wird Zugang zu komplexen Fragestellungen ermöglicht, die regelmäßig in
-        der Konzeption und Planung von Wärmepumpen aufkommen.
+        Questo dashboard consente di controllare tramite un'interfaccia
+        semplice numerosi modelli termodinamici complessi, basati su metodi
+        numerici, senza richiedere conoscenze specialistiche preliminari.
+        Sono supportati sia il dimensionamento delle pompe di calore sia la
+        simulazione del funzionamento stazionario a carico parziale. I
+        risultati forniscono indicazioni sul comportamento del sistema, sul
+        COP, sulle grandezze di stato, sui costi dei singoli componenti e sui
+        costi di investimento complessivi della pompa di calore considerata.
+        In questo modo e possibile affrontare domande complesse che emergono
+        regolarmente nella concezione e nella pianificazione di pompe di
+        calore.
 
-        ### Key Features
+        ### Funzionalita principali
 
-        - Stationäre Auslegungs- und Teillastsimulation basierend auf
+        - Simulazione stazionaria di dimensionamento e carico parziale basata su
         [TESPy](https://github.com/oemof/tespy)
-        - Parametrisierung and Ergebnisvisualisierung mithilfe eines
-        [Streamlit](https://github.com/streamlit/streamlit) Dashboards
-        - In der Industrie, Forschung und Entwicklung gängige
-        Schaltungstopologien
-        - Sub- und transkritische Prozesse
-        - Große Auswahl an Arbeitsmedien aufgrund der Integration von
+        - Parametrizzazione e visualizzazione dei risultati tramite un
+        dashboard [Streamlit](https://github.com/streamlit/streamlit)
+        - Configurazioni circuitali diffuse nell'industria, nella ricerca e
+        nello sviluppo
+        - Processi subcritici e transcritici
+        - Ampia scelta di fluidi di lavoro grazie all'integrazione di
         [CoolProp](https://github.com/CoolProp/CoolProp)
         """
         )
 
-    st.button('Auslegung starten', on_click=switch2design)
+    st.button('Avvia dimensionamento', on_click=switch2design)
 
     st.divider()
 
-    with st.expander('Verwendete Software'):
+    with st.expander('Software utilizzato'):
         st.info(
             """
-            #### Verwendete Software:
+            #### Software utilizzato:
 
-            Zur Modellerstellung und Berechnung der Simulationen wird die
-            Open Source Software TESPy verwendet. Des Weiteren werden
-            eine Reihe weiterer Pythonpakete zur Datenverarbeitung,
-            -aufbereitung und -visualisierung genutzt.
+            Per la modellazione e il calcolo delle simulazioni viene usato il
+            software open source TESPy. Sono inoltre utilizzati diversi
+            pacchetti Python per l'elaborazione, la preparazione e la
+            visualizzazione dei dati.
 
             ---
 
             #### TESPy:
 
-            TESPy (Thermal Engineering Systems in Python) ist ein
-            leistungsfähiges Simulationswerkzeug für thermische
-            Verfahrenstechnik, zum Beispiel für Kraftwerke,
-            Fernwärmesysteme oder Wärmepumpen. Mit dem TESPy-Paket ist es
-            möglich, Anlagen auszulegen und den stationären Betrieb zu
-            simulieren. Danach kann das Teillastverhalten anhand der
-            zugrundeliegenden Charakteristiken für jede Komponente der
-            Anlage ermittelt werden. Die komponentenbasierte Struktur in
-            Kombination mit der Lösungsmethode bieten eine sehr hohe
-            Flexibilität hinsichtlich der Anlagentopologie und der
-            Parametrisierung. Weitere Informationen zu TESPy sind in dessen
-            [Onlinedokumentation](https://tespy.readthedocs.io) in
-            englischer Sprache zu finden.
+            TESPy (Thermal Engineering Systems in Python) e uno strumento di
+            simulazione potente per sistemi termici, ad esempio centrali
+            elettriche, reti di teleriscaldamento o pompe di calore. Con TESPy
+            e possibile dimensionare impianti e simularne il funzionamento
+            stazionario. Successivamente il comportamento a carico parziale puo
+            essere determinato in base alle caratteristiche dei singoli
+            componenti. La struttura a componenti, insieme al metodo di
+            soluzione, offre grande flessibilita rispetto alla topologia
+            dell'impianto e alla parametrizzazione. Maggiori informazioni su
+            TESPy sono disponibili nella sua
+            [documentazione online](https://tespy.readthedocs.io), in inglese.
 
-            #### Weitere Pakete:
+            #### Altri pacchetti:
 
-            - [Streamlit](https://docs.streamlit.io) (Graphische Oberfläche)
-            - [NumPy](https://numpy.org) (Datenverarbeitung)
-            - [pandas](https://pandas.pydata.org) (Datenverarbeitung)
+            - [Streamlit](https://docs.streamlit.io) (interfaccia grafica)
+            - [NumPy](https://numpy.org) (elaborazione dati)
+            - [pandas](https://pandas.pydata.org) (elaborazione dati)
             - [SciPy](https://scipy.org/) (Interpolation)
             - [scikit-learn](https://scikit-learn.org) (Regression)
-            - [Matplotlib](https://matplotlib.org) (Datenvisualisierung)
+            - [Matplotlib](https://matplotlib.org) (visualizzazione dati)
             - [FluProDia](https://fluprodia.readthedocs.io)
-            (Datenvisualisierung)
-            - [CoolProp](http://www.coolprop.org) (Stoffdaten)
+            (visualizzazione dati)
+            - [CoolProp](http://www.coolprop.org) (proprieta dei fluidi)
             """
             )
 
-    with st.expander('Publikationen'):
+    with st.expander('Pubblicazioni'):
         st.success(
             """
 
@@ -708,18 +746,18 @@ if mode == 'Start':
     with st.expander('Disclaimer'):
         st.warning(
             """
-            #### Simulationsergebnisse:
+            #### Risultati della simulazione:
 
-            Numerische Simulationen sind Berechnungen mittels geeigneter
-            Iterationsverfahren in Bezug auf die vorgegebenen und gesetzten
-            Randbedingungen und Parameter. Eine Berücksichtigung aller
-            möglichen Einflüsse ist in Einzelfällen nicht möglich, so dass
-            Abweichungen zu Erfahrungswerten aus Praxisanwendungen
-            entstehen können und bei der Bewertung berücksichtigt werden
-            müssen. Die Ergebnisse geben hinreichenden bis genauen
-            Aufschluss über das prinzipielle Verhalten, den COP und
-            Zustandsgrößen in den einzelnen Komponenten der Wärmepumpe.
-            Dennoch sind alle Angaben und Ergebnisse ohne Gewähr.
+            Le simulazioni numeriche sono calcoli eseguiti con procedure
+            iterative adatte, sulla base delle condizioni al contorno e dei
+            parametri impostati. In singoli casi non e possibile considerare
+            tutti i possibili fattori di influenza; possono quindi emergere
+            scostamenti rispetto ai valori osservati in applicazioni reali, da
+            tenere presenti nella valutazione. I risultati forniscono
+            indicazioni da sufficienti ad accurate sul comportamento generale,
+            sul COP e sulle grandezze di stato nei singoli componenti della
+            pompa di calore. Tutti i dati e i risultati sono comunque forniti
+            senza garanzia.
             """
             )
 
@@ -727,7 +765,7 @@ if mode == 'Start':
 
         st.success(
             """
-            #### Softwarelizenz
+            #### Licenza software
             MIT License
 
             Copyright © 2023 Jonas Freißmann and Malte Fritz
@@ -761,7 +799,7 @@ if mode == 'Auslegung':
         col_left, col_right = st.columns([1, 4])
 
         with col_left:
-            st.subheader('Topologie')
+            st.subheader('Topologia')
 
             if is_dark:
                 try:
@@ -785,77 +823,74 @@ if mode == 'Auslegung':
                 st.image(top_file)
 
         with col_right:
-            st.subheader('Kältemittel')
+            st.subheader('Refrigerante')
 
             if hp_model['nr_refrigs'] == 1:
                 st.dataframe(df_refrig, width='stretch')
             elif hp_model['nr_refrigs'] == 2:
-                st.markdown('#### Hochtemperaturkreis')
+                st.markdown('#### Circuito ad alta temperatura')
                 st.dataframe(df_refrig2, width='stretch')
-                st.markdown('#### Niedertemperaturkreis')
+                st.markdown('#### Circuito a bassa temperatura')
                 st.dataframe(df_refrig1, width='stretch')
 
             st.write(
                 """
-                Alle Stoffdaten und Klassifikationen aus
-                [CoolProp](http://www.coolprop.org) oder
+                Tutte le proprieta dei fluidi e le classificazioni provengono
+                da [CoolProp](http://www.coolprop.org) o da
                 [Arpagaus et al. (2018)](https://doi.org/10.1016/j.energy.2018.03.166)
                 """
                 )
 
-        with st.expander('Anleitung'):
+        with st.expander('Istruzioni'):
             st.info(
                 """
-                #### Anleitung
+                #### Istruzioni
 
-                Sie befinden sich auf der Oberfläche zur Auslegungssimulation
-                Ihrer Wärmepumpe. Dazu sind links in der Sidebar neben der
-                Dimensionierung und der Wahl des zu verwendenden Kältemittels
-                verschiedene zentrale Parameter des Kreisprozesse vorzugeben.
+                Ti trovi nell'interfaccia per il dimensionamento della pompa
+                di calore. Nella barra laterale a sinistra puoi impostare la
+                taglia dell'impianto, scegliere il refrigerante e definire i
+                principali parametri del ciclo.
 
-                Dies sind zum Beispiel die Temperaturen der Wärmequelle und
-                -senke, aber auch die dazugehörigen Netzdrücke. Darüber hinaus
-                kann optional ein interner Wärmeübertrager hinzugefügt werden.
-                Dazu ist weiterhin die resultierende Überhitzung des
-                verdampften Kältemittels vorzugeben.
+                Tra questi rientrano, ad esempio, le temperature della sorgente
+                e del pozzo termico, oltre alle relative pressioni di rete. Se
+                previsto dal modello, puoi aggiungere uno scambiatore interno e
+                impostare il surriscaldamento risultante del refrigerante
+                evaporato.
 
-                Ist die Auslegungssimulation erfolgreich abgeschlossen, werden
-                die generierten Ergebnisse graphisch in Zustandsdiagrammen
-                aufgearbeitet und quantifiziert. Die zentralen Größen wie die
-                Leistungszahl (COP) sowie die relevanten Wärmeströme und
-                Leistung werden aufgeführt. Darüber hinaus werden die
-                thermodynamischen Zustandsgrößen in allen Prozessschritten
-                tabellarisch aufgelistet.
+                Al termine di una simulazione di dimensionamento riuscita, i
+                risultati vengono visualizzati in diagrammi di stato e
+                quantificati. Vengono riportati i valori principali, come il
+                COP, i flussi termici rilevanti e la potenza. Le grandezze
+                termodinamiche di tutti i passaggi del processo sono inoltre
+                elencate in forma tabellare.
 
-                Im Anschluss an die Auslegungsimulation erscheint ein Knopf zum
-                Wechseln in die Teillastoberfläche. Dies kann ebenfalls über
-                das Dropdownmenü in der Sidebar erfolgen. Informationen zur
-                Durchführung der Teillastsimulationen befindet sich auf der
-                Startseite dieser Oberfläche.
+                Dopo il dimensionamento compare un pulsante per passare alla
+                simulazione a carico parziale. In alternativa puoi usare il
+                menu a discesa nella barra laterale.
                 """
                 )
 
     if run_sim:
         # %% Run Design Simulation
-        with st.spinner('Simulation wird durchgeführt...'):
+        with st.spinner('Simulazione in corso...'):
             try:
                 ss.hp = run_design(hp_model_name, params)
                 sim_succeded = True
                 st.success(
-                    'Die Simulation der Wärmepumpenauslegung war erfolgreich.'
+                    'La simulazione di dimensionamento della pompa di calore e riuscita.'
                     )
             except ValueError as e:
                 sim_succeded = False
                 print(f'ValueError: {e}')
                 st.error(
-                    'Bei der Simulation der Wärmepumpe ist der nachfolgende '
-                    + 'Fehler aufgetreten. Bitte korrigieren Sie die '
-                    + f'Eingangsparameter und versuchen es erneut.\n\n"{e}"'
+                    'Durante la simulazione della pompa di calore si e '
+                    + 'verificato il seguente errore. Correggi i parametri '
+                    + f'di ingresso e riprova.\n\n"{e}"'
                     )
 
         # %% MARK: Results
         if sim_succeded:
-            with st.spinner('Ergebnisse werden visualisiert...'):
+            with st.spinner('Visualizzazione dei risultati...'):
 
                 stateconfigpath = str(resources.files('heatpumps').joinpath(
                     'models', 'input', 'state_diagram_config.json'
@@ -883,7 +918,7 @@ if mode == 'Auslegung':
                     else:
                         state_props2 = config['MISC']
 
-                st.header('Ergebnisse der Auslegung')
+                st.header('Risultati del dimensionamento')
 
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric('COP', round(ss.hp.cop, 2))
@@ -900,12 +935,12 @@ if mode == 'Auslegung':
                     )
                 col4.metric('Q_dot_zu', f'{Q_dot_zu:.2f} MW')
 
-                with st.expander('Topologie & Kältemittel'):
+                with st.expander('Topologia e refrigerante'):
                     # %% Topology & Refrigerant
                     col_left, col_right = st.columns([1, 4])
 
                     with col_left:
-                        st.subheader('Topologie')
+                        st.subheader('Topologia')
 
                         top_file = os.path.join(
                             src_path, 'img', 'topologies',
@@ -922,25 +957,25 @@ if mode == 'Auslegung':
                         st.image(top_file)
 
                     with col_right:
-                        st.subheader('Kältemittel')
+                        st.subheader('Refrigerante')
 
                         if hp_model['nr_refrigs'] == 1:
                             st.dataframe(df_refrig, width='stretch')
                         elif hp_model['nr_refrigs'] == 2:
-                            st.markdown('#### Hochtemperaturkreis')
+                            st.markdown('#### Circuito ad alta temperatura')
                             st.dataframe(df_refrig2, width='stretch')
-                            st.markdown('#### Niedertemperaturkreis')
+                            st.markdown('#### Circuito a bassa temperatura')
                             st.dataframe(df_refrig1, width='stretch')
 
                         st.write(
                             """
-                            Alle Stoffdaten und Klassifikationen aus
-                            [CoolProp](http://www.coolprop.org) oder
+                            Tutte le proprieta dei fluidi e le classificazioni
+                            provengono da [CoolProp](http://www.coolprop.org) o da
                             [Arpagaus et al. (2018)](https://doi.org/10.1016/j.energy.2018.03.166)
                             """
                             )
 
-                with st.expander('Zustandsdiagramme'):
+                with st.expander('Diagrammi di stato'):
                     # %% State Diagrams
                     col_left, _, col_right = st.columns([0.495, 0.01, 0.495])
                     _, slider_left, _, slider_right, _ = (
@@ -954,7 +989,7 @@ if mode == 'Auslegung':
 
                     with col_left:
                         # %% Log(p)-h-Diagram
-                        st.subheader('Log(p)-h-Diagramm')
+                        st.subheader('Diagramma log(p)-h')
                         if hp_model['nr_refrigs'] == 1:
                             xmin, xmax = calc_limits(
                                 wf=ss.hp.wf, prop='h', padding_rel=0.35
@@ -1005,7 +1040,7 @@ if mode == 'Auslegung':
 
                     with col_right:
                         # %% T-s-Diagram
-                        st.subheader('T-s-Diagramm')
+                        st.subheader('Diagramma T-s')
                         if hp_model['nr_refrigs'] == 1:
                             xmin, xmax = calc_limits(
                                 wf=ss.hp.wf, prop='s', padding_rel=0.35
@@ -1051,7 +1086,7 @@ if mode == 'Auslegung':
                             st.pyplot(diagram1.fig)
                             st.pyplot(diagram2.fig)
 
-                with st.expander('Zustandsgrößen'):
+                with st.expander('Grandezze di stato'):
                     # %% State Quantities
                     state_quantities = (
                         ss.hp.nw.results['Connection'].copy()
@@ -1110,7 +1145,7 @@ if mode == 'Auslegung':
                         data=state_quantities, width='stretch'
                         )
 
-                with st.expander('Ökonomische Bewertung'):
+                with st.expander('Valutazione economica'):
                     # %% Eco Results
                     ss.hp.calc_cost(
                         ref_year='2013', **costcalcparams
@@ -1119,7 +1154,7 @@ if mode == 'Auslegung':
                     col1, col2 = st.columns(2)
                     invest_total = ss.hp.cost_total
                     col1.metric(
-                        'Gesamtinvestitionskosten',
+                        'Costo totale di investimento',
                         f'{invest_total:,.0f} €'
                         )
                     inv_sepc = (
@@ -1127,7 +1162,7 @@ if mode == 'Auslegung':
                         / abs(ss.hp.params["cons"]["Q"]/1e6)
                         )
                     col2.metric(
-                        'Spez. Investitionskosten',
+                        'Costo specifico di investimento',
                         f'{inv_sepc:,.0f} €/MW'
                         )
                     costdata = pd.DataFrame({
@@ -1140,16 +1175,16 @@ if mode == 'Auslegung':
 
                     st.write(
                         """
-                        Methodik zur Berechnung der Kosten analog zu
+                        Metodologia di calcolo dei costi analoga a
                         [Kosmadakis et al. (2020)](https://doi.org/10.1016/j.enconman.2020.113488),
-                        basierend auf [Bejan et al. (1995)](https://www.wiley.com/en-us/Thermal+Design+and+Optimization-p-9780471584674).
+                        basata su [Bejan et al. (1995)](https://www.wiley.com/en-us/Thermal+Design+and+Optimization-p-9780471584674).
                         """
                         )
 
 
-                with st.expander('Exergiebewertung'):
+                with st.expander('Valutazione exergetica'):
                     # %% Exergy Analysis
-                    st.header('Ergebnisse der Exergieanalyse')
+                    st.header("Risultati dell'analisi exergetica")
 
                     col1, col2, col3, col4, col5 = st.columns(5)
                     col1.metric(
@@ -1173,7 +1208,7 @@ if mode == 'Auslegung':
                         f'{(ss.hp.ean.network_data.E_L)/1e3:.2f} KW'
                         )
 
-                    st.subheader('Ergebnisse nach Komponente')
+                    st.subheader('Risultati per componente')
                     exergy_component_result = (
                         ss.hp.ean.component_data.copy()
                         )
@@ -1204,7 +1239,7 @@ if mode == 'Auslegung':
 
                     col6, _, col7 = st.columns([0.495, 0.01, 0.495])
                     with col6:
-                        st.subheader('Grassmann Diagramm')
+                        st.subheader('Diagramma di Grassmann')
                         diagram_placeholder_sankey = st.empty()
 
                         diagram_sankey = ss.hp.generate_sankey_diagram()
@@ -1213,7 +1248,7 @@ if mode == 'Auslegung':
                             )
 
                     with col7:
-                        st.subheader('Wasserfall Diagramm')
+                        st.subheader('Diagramma waterfall')
                         diagram_placeholder_waterfall = st.empty()
 
                         dia_wf_fig, dia_wf_ax = (
@@ -1227,30 +1262,30 @@ if mode == 'Auslegung':
 
                     st.write(
                         """
-                        Definitionen und Methodik der Exergieanalyse basierend auf
+                        Definizioni e metodologia dell'analisi exergetica basate su
                         [Morosuk und Tsatsaronis (2019)](https://doi.org/10.1016/j.energy.2018.10.090),
-                        dessen Implementation in TESPy beschrieben in [Witte und Hofmann et al. (2022)](https://doi.org/10.3390/en15114087)
-                        und didaktisch aufbereitet in [Witte, Freißmann und Fritz (2023)](https://fwitte.github.io/TESPy_teaching_exergy/).
+                        sulla relativa implementazione in TESPy descritta in [Witte und Hofmann et al. (2022)](https://doi.org/10.3390/en15114087)
+                        e sulla trattazione didattica in [Witte, Freißmann und Fritz (2023)](https://fwitte.github.io/TESPy_teaching_exergy/).
                         """
                         )
 
                 st.info(
-                    'Um die Teillast zu berechnen, drücke auf "Teillast '
-                    + 'simulieren".'
+                    'Per calcolare il carico parziale, premi "Simula carico '
+                    + 'parziale".'
                     )
 
-                st.button('Teillast simulieren', on_click=switch2partload)
+                st.button('Simula carico parziale', on_click=switch2partload)
 
 if mode == 'Teillast':
     # %% MARK: Offdesign Simulation
-    st.header('Betriebscharakteristik')
+    st.header('Caratteristica di funzionamento')
 
     if 'hp' not in ss:
         st.warning(
             '''
-            Um eine Teillastsimulation durchzuführen, muss zunächst eine 
-            Wärmepumpe ausgelegt werden. Wechseln Sie bitte zunächst in den 
-            Modus "Auslegung".
+            Per eseguire una simulazione a carico parziale devi prima
+            dimensionare una pompa di calore. Passa innanzitutto alla modalita
+            "Dimensionamento".
             '''
         )
     else:
@@ -1258,18 +1293,18 @@ if mode == 'Teillast':
             # %% Landing Page
             st.write(
                 '''
-                Parametrisierung der Teillastberechnung:
-                + Prozentualer Anteil Teillast
-                + Bereich der Quelltemperatur
-                + Bereich der Senkentemperatur
+                Parametrizzazione del calcolo a carico parziale:
+                + Percentuale di carico parziale
+                + Intervallo della temperatura della sorgente
+                + Intervallo della temperatura del pozzo termico
                 '''
                 )
 
         if run_pl_sim:
             # %% Run Offdesign Simulation
             with st.spinner(
-                    'Teillastsimulation wird durchgeführt... Dies kann eine '
-                    + 'Weile dauern.'
+                    'Simulazione a carico parziale in corso... Potrebbe '
+                    + "richiedere un po' di tempo."
                     ):
                 ss.hp, ss.partload_char = (
                     run_partload(ss.hp)
@@ -1278,15 +1313,15 @@ if mode == 'Teillast':
                 #     'partload_char.csv', index_col=[0, 1, 2], sep=';'
                 #     )
                 st.success(
-                    'Die Simulation der Wärmepumpencharakteristika war '
-                    + 'erfolgreich.'
+                    'La simulazione delle caratteristiche della pompa di '
+                    + 'calore e riuscita.'
                     )
 
         if run_pl_sim or 'partload_char' in ss:
             # %% Results
-            with st.spinner('Ergebnisse werden visualisiert...'):
+            with st.spinner('Visualizzazione dei risultati...'):
 
-                with st.expander('Diagramme', expanded=True):
+                with st.expander('Diagrammi', expanded=True):
                     col_left, col_right = st.columns(2)
 
                     with col_left:
@@ -1308,7 +1343,7 @@ if mode == 'Teillast':
                                 ss.hp.params['offdesign']['T_hs_ff_end']
                                 )
                             T_select_cop = st.slider(
-                                'Quellentemperatur',
+                                'Temperatura della sorgente',
                                 min_value=T_hs_min,
                                 max_value=T_hs_max,
                                 value=int((T_hs_max+T_hs_min)/2),
@@ -1331,7 +1366,7 @@ if mode == 'Teillast':
                                 )
                         elif type_hs == 'Variabel':
                             T_select_T_cons_ff = st.slider(
-                                'Quellentemperatur',
+                                'Temperatura della sorgente',
                                 min_value=T_hs_min,
                                 max_value=T_hs_max,
                                 value=int((T_hs_max+T_hs_min)/2),
@@ -1342,7 +1377,7 @@ if mode == 'Teillast':
                             figs[T_select_T_cons_ff]
                             )
 
-                with st.expander('Exergieanalyse Teillast', expanded=True):
+                with st.expander('Analisi exergetica a carico parziale', expanded=True):
 
                     col_left_1, col_right_1 = st.columns(2)
 
@@ -1365,7 +1400,7 @@ if mode == 'Teillast':
                                 ss.hp.params['offdesign']['T_hs_ff_end']
                                 )
                             T_select_epsilon = st.slider(
-                                'Quellentemperatur',
+                                'Temperatura della sorgente',
                                 min_value=T_hs_min,
                                 max_value=T_hs_max,
                                 value=int((T_hs_max + T_hs_min) / 2),
@@ -1375,7 +1410,7 @@ if mode == 'Teillast':
 
                         pl_epsilon_placeholder.pyplot(figs[T_select_epsilon])
 
-                st.button('Neue Wärmepumpe auslegen', on_click=reset2design)
+                st.button('Dimensiona una nuova pompa di calore', on_click=reset2design)
 
 # %% MARK: Footer
 st.markdown("<br><br>", unsafe_allow_html=True)
